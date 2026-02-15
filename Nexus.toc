@@ -1,0 +1,25 @@
+## Interface: 120000
+## Title: Nexus
+## Notes: Quality of Life changes for Midnight.
+## IconTexture: Interface\AddOns\Nexus\media\icon.tga
+## Category: Quality of Life
+## X-Category: Quality of Life
+## Author: Faith
+## Version: 1.0.0
+## SavedVariables: NexusDB
+## OptionalDeps: LibSharedMedia-3.0
+
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+embeds.xml
+media.lua
+
+core.lua
+modules/automation.lua
+modules/combat.lua
+modules/common.lua
+modules/dungeons-raids.lua
+modules/functions.lua
+modules/interface.lua
+modules/settings.lua
+modules/system.lua
