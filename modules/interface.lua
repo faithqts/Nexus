@@ -1,6 +1,7 @@
 local NX = Nexus
 NX.MotionSickness = NX.MotionSickness or {}
 local MS = NX.MotionSickness
+local CV = NX.CVars
 
 local CVAR = "motionSicknessLandscapeDarkening"
 
@@ -12,16 +13,34 @@ local function EnsureDB()
 end
 
 local function GetBool()
-    return C_CVar.GetCVar(CVAR) == "1"
+    if CV and CV.GetBool then
+        return CV:GetBool(CVAR, false)
+    end
+    return C_CVar and C_CVar.GetCVar and C_CVar.GetCVar(CVAR) == "1"
 end
 
 local function SetBool(v)
-    C_CVar.SetCVar(CVAR, v and "1" or "0")
+    if CV and CV.SetBool then
+        CV:SetBool(CVAR, v)
+        return
+    end
+    if C_CVar and C_CVar.SetCVar then
+        C_CVar.SetCVar(CVAR, v and "1" or "0")
+    end
 end
 
 function MS:Apply()
     if not self._active then return end
-    SetBool(false)
+    local resolved = false
+    if CV and CV.ReconcileBool then
+        resolved = CV:ReconcileBool(CVAR, false)
+    else
+        SetBool(false)
+    end
+
+    if NX.DB and NX.DB.motionSickness then
+        NX.DB.motionSickness.enabled = not resolved
+    end
 end
 
 function MS:Enable()
@@ -169,16 +188,34 @@ local function EnsureDB()
 end
 
 local function GetBool()
-    return C_CVar.GetCVar(CVAR) == "1"
+    if CV and CV.GetBool then
+        return CV:GetBool(CVAR, false)
+    end
+    return C_CVar and C_CVar.GetCVar and C_CVar.GetCVar(CVAR) == "1"
 end
 
 local function SetBool(v)
-    C_CVar.SetCVar(CVAR, v and "1" or "0")
+    if CV and CV.SetBool then
+        CV:SetBool(CVAR, v)
+        return
+    end
+    if C_CVar and C_CVar.SetCVar then
+        C_CVar.SetCVar(CVAR, v and "1" or "0")
+    end
 end
 
 function SH:Apply()
     if not self._active then return end
-    SetBool(true)
+    local resolved = true
+    if CV and CV.ReconcileBool then
+        resolved = CV:ReconcileBool(CVAR, true)
+    else
+        SetBool(true)
+    end
+
+    if NX.DB and NX.DB.alwaysSharpen then
+        NX.DB.alwaysSharpen.enabled = resolved
+    end
 end
 
 function SH:Enable()
@@ -243,7 +280,46 @@ local function EnsureDB()
     if db.fontSize == nil then db.fontSize = 22 end
     if db.width == nil then db.width = 800 end
     if db.height == nil then db.height = 120 end
+    if db.offsetY == nil then db.offsetY = 0 end
     if db.outline == nil then db.outline = true end
+end
+
+local function CaptureFramePoints(frame)
+    local points = {}
+    if not frame or not frame.GetNumPoints or not frame.GetPoint then
+        return points
+    end
+
+    for i = 1, frame:GetNumPoints() do
+        local point, relativeTo, relativePoint, x, y = frame:GetPoint(i)
+        points[#points + 1] = {
+            point = point,
+            relativeTo = relativeTo,
+            relativePoint = relativePoint,
+            x = x,
+            y = y,
+        }
+    end
+
+    return points
+end
+
+local function RestoreFramePoints(frame, points, offsetY)
+    if not frame or not frame.ClearAllPoints or not frame.SetPoint then return end
+    if type(points) ~= "table" or #points == 0 then return end
+
+    frame:ClearAllPoints()
+
+    for _, p in ipairs(points) do
+        local x = tonumber(p.x) or 0
+        local y = (tonumber(p.y) or 0) + (tonumber(offsetY) or 0)
+
+        if p.relativeTo ~= nil then
+            frame:SetPoint(p.point, p.relativeTo, p.relativePoint, x, y)
+        else
+            frame:SetPoint(p.point, UIParent, p.relativePoint, x, y)
+        end
+    end
 end
 
 local PLAYER_NAME = UnitName("player") or "Player"
@@ -267,6 +343,7 @@ function ET:Apply()
             flags = flags,
             width = UIErrorsFrame:GetWidth(),
             height = UIErrorsFrame:GetHeight(),
+            points = CaptureFramePoints(UIErrorsFrame),
         }
     end
 
@@ -275,14 +352,16 @@ function ET:Apply()
     UIErrorsFrame:SetFont(font, db.fontSize, useFlags)
     UIErrorsFrame:SetWidth(db.width)
     UIErrorsFrame:SetHeight(db.height)
+    RestoreFramePoints(UIErrorsFrame, self._prev.points, db.offsetY)
 end
 
 function ET:Restore()
     if not self._prev then return end
     if not UIErrorsFrame or not UIErrorsFrame.GetFont then return end
     UIErrorsFrame:SetFont(self._prev.font, self._prev.size, self._prev.flags)
-    UIErrorsFrame:SetWidth(self._prev.width)
-    UIErrorsFrame:SetHeight(self._prev.height)
+    if self._prev.width then UIErrorsFrame:SetWidth(self._prev.width) end
+    if self._prev.height then UIErrorsFrame:SetHeight(self._prev.height) end
+    RestoreFramePoints(UIErrorsFrame, self._prev.points, 0)
 end
 
 function ET:Enable()

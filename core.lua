@@ -85,6 +85,7 @@ local defaults = {
         fontSize = 22,
         width = 800,
         height = 120,
+        offsetY = 0,
         outline = true,
     },
 
@@ -108,6 +109,20 @@ local defaults = {
         hideOverPet = false,
         showCombatDamage = false,
         showCombatHealing = false,
+        showHealingAbsorbSelf = false,
+        showHealingAbsorbTarget = false,
+        showCombatState = false,
+        showComboPoints = false,
+        showDamageReduction = false,
+        showDodgeParryMiss = false,
+        showEnergyGains = false,
+        showFloatMode = false,
+        showFriendlyHealers = false,
+        showHonorGains = false,
+        showLowManaHealth = false,
+        showPeriodicEnergyGains = false,
+        showPetMeleeDamage = false,
+        showPetSpellDamage = false,
     },
 
     assistedRotationOverlay = {
@@ -178,9 +193,147 @@ local function ApplyDefaults(dst, src)
     end
 end
 
+NX.CVars = NX.CVars or {}
+local CV = NX.CVars
+
+function CV:GetRaw(name)
+    if type(name) ~= "string" then return nil end
+
+    local value
+    if C_CVar and C_CVar.GetCVar then
+        local ok, result = pcall(C_CVar.GetCVar, name)
+        if ok then value = result end
+    elseif GetCVar then
+        local ok, result = pcall(GetCVar, name)
+        if ok then value = result end
+    end
+
+    if value == "1" or value == "0" then
+        return value
+    end
+
+    return nil
+end
+
+function CV:GetBool(name, fallback)
+    local raw = self:GetRaw(name)
+    if raw == "1" then return true end
+    if raw == "0" then return false end
+    return fallback and true or false
+end
+
+function CV:SetBool(name, enabled)
+    if type(name) ~= "string" then return end
+    local value = enabled and "1" or "0"
+    if C_CVar and C_CVar.SetCVar then
+        pcall(C_CVar.SetCVar, name, value)
+        return
+    end
+    if SetCVar then
+        pcall(SetCVar, name, value)
+    end
+end
+
+function CV:ReconcileBool(name, addonValue)
+    local raw = self:GetRaw(name)
+    if raw == "1" then return true end
+    if raw == "0" then return false end
+
+    local resolved = addonValue and true or false
+    self:SetBool(name, resolved)
+    return resolved
+end
+
+local function SeedCVarBackedDefaults(db)
+    if not db or db._cvarSeeded then return end
+
+    db.luaErrors = db.luaErrors or {}
+    db.luaErrors.enabled = CV:GetBool("scriptErrors", db.luaErrors.enabled == true)
+
+    db.tutorials = db.tutorials or {}
+    local showTutorials = CV:GetBool("showTutorials", db.tutorials.disabled ~= true)
+    db.tutorials.disabled = not showTutorials
+
+    db.autoDismount = db.autoDismount or {}
+    db.autoDismount.enabled = CV:GetBool("autoDismount", db.autoDismount.enabled ~= false)
+    db.autoDismount.flying = CV:GetBool("autoDismountFlying", db.autoDismount.flying ~= false)
+
+    db.autoPlaceSpells = db.autoPlaceSpells or {}
+    db.autoPlaceSpells.enabled = CV:GetBool("AutoPushSpellToActionBar", db.autoPlaceSpells.enabled == true)
+
+    db.floatingCombatText = db.floatingCombatText or {}
+    db.floatingCombatText.showCombatDamage = CV:GetBool(
+        "floatingCombatTextCombatDamage_v2",
+        db.floatingCombatText.showCombatDamage == true
+    )
+    db.floatingCombatText.showCombatHealing = CV:GetBool(
+        "floatingCombatTextCombatHealing_v2",
+        db.floatingCombatText.showCombatHealing == true
+    )
+    db.floatingCombatText.showHealingAbsorbSelf = CV:GetBool(
+        "floatingCombatTextCombatHealingAbsorbSelf_v2",
+        db.floatingCombatText.showHealingAbsorbSelf == true
+    )
+    db.floatingCombatText.showHealingAbsorbTarget = CV:GetBool(
+        "floatingCombatTextCombatHealingAbsorbTarget_v2",
+        db.floatingCombatText.showHealingAbsorbTarget == true
+    )
+    db.floatingCombatText.showCombatState = CV:GetBool(
+        "floatingCombatTextCombatState_v2",
+        db.floatingCombatText.showCombatState == true
+    )
+    db.floatingCombatText.showComboPoints = CV:GetBool(
+        "floatingCombatTextComboPoints_v2",
+        db.floatingCombatText.showComboPoints == true
+    )
+    db.floatingCombatText.showDamageReduction = CV:GetBool(
+        "floatingCombatTextDamageReduction_v2",
+        db.floatingCombatText.showDamageReduction == true
+    )
+    db.floatingCombatText.showDodgeParryMiss = CV:GetBool(
+        "floatingCombatTextDodgeParryMiss_v2",
+        db.floatingCombatText.showDodgeParryMiss == true
+    )
+    db.floatingCombatText.showEnergyGains = CV:GetBool(
+        "floatingCombatTextEnergyGains_v2",
+        db.floatingCombatText.showEnergyGains == true
+    )
+    db.floatingCombatText.showFloatMode = CV:GetBool(
+        "floatingCombatTextFloatMode_v2",
+        db.floatingCombatText.showFloatMode == true
+    )
+    db.floatingCombatText.showFriendlyHealers = CV:GetBool(
+        "floatingCombatTextFriendlyHealers_v2",
+        db.floatingCombatText.showFriendlyHealers == true
+    )
+    db.floatingCombatText.showHonorGains = CV:GetBool(
+        "floatingCombatTextHonorGains_v2",
+        db.floatingCombatText.showHonorGains == true
+    )
+    db.floatingCombatText.showLowManaHealth = CV:GetBool(
+        "floatingCombatTextLowManaHealth_v2",
+        db.floatingCombatText.showLowManaHealth == true
+    )
+    db.floatingCombatText.showPeriodicEnergyGains = CV:GetBool(
+        "floatingCombatTextPeriodicEnergyGains_v2",
+        db.floatingCombatText.showPeriodicEnergyGains == true
+    )
+    db.floatingCombatText.showPetMeleeDamage = CV:GetBool(
+        "floatingCombatTextPetMeleeDamage_v2",
+        db.floatingCombatText.showPetMeleeDamage == true
+    )
+    db.floatingCombatText.showPetSpellDamage = CV:GetBool(
+        "floatingCombatTextPetSpellDamage_v2",
+        db.floatingCombatText.showPetSpellDamage == true
+    )
+
+    db._cvarSeeded = true
+end
+
 local function InitDB()
     NexusDB = NexusDB or {}
     ApplyDefaults(NexusDB, defaults)
+    SeedCVarBackedDefaults(NexusDB)
     NX.DB = NexusDB
 end
 
@@ -324,6 +477,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.AutoPlaceSpells and NX.AutoPlaceSpells.Init then
             NX.AutoPlaceSpells:Init()
         end
+        if NX.CVarStateSync and NX.CVarStateSync.Init then
+            NX.CVarStateSync:Init()
+        end
         if NX.FloatingCombatText and NX.FloatingCombatText.Init then
             NX.FloatingCombatText:Init()
         end
@@ -407,8 +563,9 @@ frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("CHAT_MSG_PARTY")
 frame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
 
-SLASH_NEXUS1 = "/nex"
-SLASH_NEXUS2 = "/nexus"
+SLASH_NEXUS1 = "/nx"
+SLASH_NEXUS2 = "/nex"
+SLASH_NEXUS3 = "/nexus"
 
 SlashCmdList["NEXUS"] = function()
     if InCombatLockdown and InCombatLockdown() then

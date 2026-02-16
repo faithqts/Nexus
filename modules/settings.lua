@@ -1602,7 +1602,11 @@ local function BuildEnhancedErrorTextControls(category)
 
         local function SetValue(v)
             NX.DB.enhancedErrorText = NX.DB.enhancedErrorText or {}
-            NX.DB.enhancedErrorText.width = tonumber(v) or 800
+            v = tonumber(v) or 800
+            v = math.floor(v + 0.5)
+            if v < 200 then v = 200 end
+            if v > 2000 then v = 2000 end
+            NX.DB.enhancedErrorText.width = v
             if NX.EnhancedErrorText and NX.EnhancedErrorText.OnSettingsChanged then
                 NX.EnhancedErrorText:OnSettingsChanged()
             end
@@ -1620,7 +1624,7 @@ local function BuildEnhancedErrorTextControls(category)
 
         local options = Settings.CreateSliderOptions(200, 2000, 10)
         ApplyRightLabel(options)
-        Settings.CreateSlider(category, setting, options, "Controls the width of Enhanced Objective & Error Text.")
+        Settings.CreateSlider(category, setting, options, "Controls the width of the Objective & Error text box.")
     end
 
     do
@@ -1630,7 +1634,11 @@ local function BuildEnhancedErrorTextControls(category)
 
         local function SetValue(v)
             NX.DB.enhancedErrorText = NX.DB.enhancedErrorText or {}
-            NX.DB.enhancedErrorText.height = tonumber(v) or 120
+            v = tonumber(v) or 120
+            v = math.floor(v + 0.5)
+            if v < 40 then v = 40 end
+            if v > 400 then v = 400 end
+            NX.DB.enhancedErrorText.height = v
             if NX.EnhancedErrorText and NX.EnhancedErrorText.OnSettingsChanged then
                 NX.EnhancedErrorText:OnSettingsChanged()
             end
@@ -1648,7 +1656,39 @@ local function BuildEnhancedErrorTextControls(category)
 
         local options = Settings.CreateSliderOptions(40, 400, 5)
         ApplyRightLabel(options)
-        Settings.CreateSlider(category, setting, options, "Controls the height of Enhanced Objective & Error Text.")
+        Settings.CreateSlider(category, setting, options, "Controls the height of the Objective & Error text box.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.enhancedErrorText and NX.DB.enhancedErrorText.offsetY) or 0
+        end
+
+        local function SetValue(v)
+            NX.DB.enhancedErrorText = NX.DB.enhancedErrorText or {}
+            v = tonumber(v) or 0
+            v = math.floor(v + 0.5)
+            if v < -600 then v = -600 end
+            if v > 600 then v = 600 end
+            NX.DB.enhancedErrorText.offsetY = v
+            if NX.EnhancedErrorText and NX.EnhancedErrorText.OnSettingsChanged then
+                NX.EnhancedErrorText:OnSettingsChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_ENHANCED_ERRTEXT_OFFSETY",
+            Settings.VarType.Number,
+            "Y Offset",
+            0,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(-600, 600, 1)
+        ApplyRightLabel(options, function(value) return string.format("%dpx", value) end)
+        Settings.CreateSlider(category, setting, options, "Moves the Objective & Error text box up or down on the screen.")
     end
 
     do
@@ -1785,48 +1825,56 @@ end
 
 local function BuildFloatingCombatTextControls(category)
     do
-        local function GetValue() return not not (NX.DB.floatingCombatText and NX.DB.floatingCombatText.hideOverPlayer) end
+        local function GetValue() return not (not not (NX.DB.floatingCombatText and NX.DB.floatingCombatText.hideOverPlayer)) end
         local function SetValue(v)
             NX.DB.floatingCombatText = NX.DB.floatingCombatText or {}
-            NX.DB.floatingCombatText.hideOverPlayer = not not v
+            NX.DB.floatingCombatText.hideOverPlayer = not v
             if NX.FloatingCombatText and NX.FloatingCombatText.OnSettingsChanged then NX.FloatingCombatText:OnSettingsChanged() end
         end
-        local setting = Settings.RegisterProxySetting(category, "NEXUS_FCT_HIDE_OVER_PLAYER", Settings.VarType.Boolean, "Hide over player", false, GetValue, SetValue)
-        CreateEnabledDisabledDropdown(category, setting, "Hides damage/healing hit indicator text above your character.")
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_FCT_HIDE_OVER_PLAYER", Settings.VarType.Boolean, "Enable Player", true, GetValue, SetValue)
+        CreateEnabledDisabledDropdown(category, setting, "Shows damage/healing hit indicator text above your character.")
     end
 
     do
-        local function GetValue() return not not (NX.DB.floatingCombatText and NX.DB.floatingCombatText.hideOverPet) end
+        local function GetValue() return not (not not (NX.DB.floatingCombatText and NX.DB.floatingCombatText.hideOverPet)) end
         local function SetValue(v)
             NX.DB.floatingCombatText = NX.DB.floatingCombatText or {}
-            NX.DB.floatingCombatText.hideOverPet = not not v
+            NX.DB.floatingCombatText.hideOverPet = not v
             if NX.FloatingCombatText and NX.FloatingCombatText.OnSettingsChanged then NX.FloatingCombatText:OnSettingsChanged() end
         end
-        local setting = Settings.RegisterProxySetting(category, "NEXUS_FCT_HIDE_OVER_PET", Settings.VarType.Boolean, "Hide over pet", false, GetValue, SetValue)
-        CreateEnabledDisabledDropdown(category, setting, "Hides damage/healing hit indicator text above your pet.")
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_FCT_HIDE_OVER_PET", Settings.VarType.Boolean, "Enable Pet", true, GetValue, SetValue)
+        CreateEnabledDisabledDropdown(category, setting, "Shows damage/healing hit indicator text above your pet.")
     end
 
-    do
-        local function GetValue() return not not (NX.DB.floatingCombatText and NX.DB.floatingCombatText.showCombatDamage) end
+    local function MakeToggle(proxyKey, dbKey, label, tooltip)
+        local function GetValue() return not not (NX.DB.floatingCombatText and NX.DB.floatingCombatText[dbKey]) end
         local function SetValue(v)
             NX.DB.floatingCombatText = NX.DB.floatingCombatText or {}
-            NX.DB.floatingCombatText.showCombatDamage = not not v
+            NX.DB.floatingCombatText[dbKey] = not not v
             if NX.FloatingCombatText and NX.FloatingCombatText.OnSettingsChanged then NX.FloatingCombatText:OnSettingsChanged() end
         end
-        local setting = Settings.RegisterProxySetting(category, "NEXUS_FCT_SHOW_DAMAGE", Settings.VarType.Boolean, "Show combat damage", false, GetValue, SetValue)
-        CreateEnabledDisabledDropdown(category, setting, "Controls floatingCombatTextCombatDamage_v2.")
+        local setting = Settings.RegisterProxySetting(category, proxyKey, Settings.VarType.Boolean, label, false, GetValue, SetValue)
+        CreateEnabledDisabledDropdown(category, setting, tooltip)
     end
 
-    do
-        local function GetValue() return not not (NX.DB.floatingCombatText and NX.DB.floatingCombatText.showCombatHealing) end
-        local function SetValue(v)
-            NX.DB.floatingCombatText = NX.DB.floatingCombatText or {}
-            NX.DB.floatingCombatText.showCombatHealing = not not v
-            if NX.FloatingCombatText and NX.FloatingCombatText.OnSettingsChanged then NX.FloatingCombatText:OnSettingsChanged() end
-        end
-        local setting = Settings.RegisterProxySetting(category, "NEXUS_FCT_SHOW_HEALING", Settings.VarType.Boolean, "Show combat healing", false, GetValue, SetValue)
-        CreateEnabledDisabledDropdown(category, setting, "Controls floatingCombatTextCombatHealing_v2.")
-    end
+    MakeToggle("NEXUS_FCT_SHOW_DAMAGE", "showCombatDamage", "Combat Damage", "Controls floatingCombatTextCombatDamage_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_HEALING", "showCombatHealing", "Combat Healing", "Controls floatingCombatTextCombatHealing_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_FRIENDLY_HEALERS", "showFriendlyHealers", "Friendly Healers", "Controls floatingCombatTextFriendlyHealers_v2.")
+
+    AddSectionHeader(category, "Floating Combat Text - Events")
+    MakeToggle("NEXUS_FCT_SHOW_HEAL_ABSORB_SELF", "showHealingAbsorbSelf", "Self Healing Absorbs", "Controls floatingCombatTextCombatHealingAbsorbSelf_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_HEAL_ABSORB_TARGET", "showHealingAbsorbTarget", "Target Healing Absorbs", "Controls floatingCombatTextCombatHealingAbsorbTarget_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_COMBAT_STATE", "showCombatState", "Combat State", "Controls floatingCombatTextCombatState_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_COMBO_POINTS", "showComboPoints", "Combo Points", "Controls floatingCombatTextComboPoints_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_DAMAGE_REDUCTION", "showDamageReduction", "Damage Reduction", "Controls floatingCombatTextDamageReduction_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_DODGE_PARRY_MISS", "showDodgeParryMiss", "Dodge, Parry, and Miss", "Controls floatingCombatTextDodgeParryMiss_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_ENERGY_GAINS", "showEnergyGains", "Energy Gains", "Controls floatingCombatTextEnergyGains_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_FLOAT_MODE", "showFloatMode", "Floating Text Mode v2", "Controls floatingCombatTextFloatMode_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_HONOR_GAINS", "showHonorGains", "Honor Gains", "Controls floatingCombatTextHonorGains_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_LOW_MANA_HEALTH", "showLowManaHealth", "Low Mana/Health", "Controls floatingCombatTextLowManaHealth_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_PERIODIC_ENERGY", "showPeriodicEnergyGains", "Periodic Energy Gains", "Controls floatingCombatTextPeriodicEnergyGains_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_PET_MELEE", "showPetMeleeDamage", "Pet Melee Damage", "Controls floatingCombatTextPetMeleeDamage_v2.")
+    MakeToggle("NEXUS_FCT_SHOW_PET_SPELL", "showPetSpellDamage", "Pet Spell Damage", "Controls floatingCombatTextPetSpellDamage_v2.")
 end
 
 local function BuildAssistedRotationOverlayControls(category)

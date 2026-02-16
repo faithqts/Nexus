@@ -1,14 +1,86 @@
 local NX = Nexus
+local CV = NX.CVars
 
 local function SetCVarBool(name, enabled)
-    if type(name) ~= "string" then return end
-    local value = enabled and "1" or "0"
-    if C_CVar and C_CVar.SetCVar then
-        pcall(C_CVar.SetCVar, name, value)
-        return
+    if CV and CV.SetBool then
+        CV:SetBool(name, enabled)
     end
-    if SetCVar then
-        pcall(SetCVar, name, value)
+end
+
+local function GetCVarBool(name, fallback)
+    if CV and CV.GetBool then
+        return CV:GetBool(name, fallback)
+    end
+    return fallback and true or false
+end
+
+NX.CVarStateSync = NX.CVarStateSync or {}
+do
+    local M = NX.CVarStateSync
+    local frame
+
+    local tracked = {
+        scriptErrors = true,
+        showTutorials = true,
+        autoDismount = true,
+        autoDismountFlying = true,
+        AutoPushSpellToActionBar = true,
+    }
+
+    local function SyncOne(name)
+        if not NX.DB then return end
+
+        if name == "scriptErrors" then
+            NX.DB.luaErrors = NX.DB.luaErrors or {}
+            NX.DB.luaErrors.enabled = GetCVarBool("scriptErrors", NX.DB.luaErrors.enabled == true)
+            return
+        end
+
+        if name == "showTutorials" then
+            NX.DB.tutorials = NX.DB.tutorials or {}
+            NX.DB.tutorials.disabled = not GetCVarBool("showTutorials", NX.DB.tutorials.disabled ~= true)
+            return
+        end
+
+        if name == "autoDismount" then
+            NX.DB.autoDismount = NX.DB.autoDismount or {}
+            NX.DB.autoDismount.enabled = GetCVarBool("autoDismount", NX.DB.autoDismount.enabled ~= false)
+            return
+        end
+
+        if name == "autoDismountFlying" then
+            NX.DB.autoDismount = NX.DB.autoDismount or {}
+            NX.DB.autoDismount.flying = GetCVarBool("autoDismountFlying", NX.DB.autoDismount.flying ~= false)
+            return
+        end
+
+        if name == "AutoPushSpellToActionBar" then
+            NX.DB.autoPlaceSpells = NX.DB.autoPlaceSpells or {}
+            NX.DB.autoPlaceSpells.enabled = GetCVarBool("AutoPushSpellToActionBar", NX.DB.autoPlaceSpells.enabled == true)
+            return
+        end
+    end
+
+    local function SyncAll()
+        SyncOne("scriptErrors")
+        SyncOne("showTutorials")
+        SyncOne("autoDismount")
+        SyncOne("autoDismountFlying")
+        SyncOne("AutoPushSpellToActionBar")
+    end
+
+    function M:Init()
+        SyncAll()
+        C_Timer.After(0, SyncAll)
+
+        if frame then return end
+        frame = CreateFrame("Frame")
+        frame:RegisterEvent("CVAR_UPDATE")
+        frame:SetScript("OnEvent", function(_, _, cvarName)
+            if tracked[cvarName] then
+                SyncOne(cvarName)
+            end
+        end)
     end
 end
 
@@ -17,7 +89,11 @@ do
     local M = NX.LuaErrors
     function M:Apply()
         if not NX.DB or not NX.DB.luaErrors then return end
-        SetCVarBool("scriptErrors", NX.DB.luaErrors.enabled == true)
+        if CV and CV.ReconcileBool then
+            NX.DB.luaErrors.enabled = CV:ReconcileBool("scriptErrors", NX.DB.luaErrors.enabled == true)
+        else
+            SetCVarBool("scriptErrors", NX.DB.luaErrors.enabled == true)
+        end
     end
     function M:OnSettingsChanged() self:Apply() end
     function M:Init() self:Apply() end
@@ -28,8 +104,13 @@ do
     local M = NX.Tutorials
     function M:Apply()
         if not NX.DB or not NX.DB.tutorials then return end
-        local disabled = NX.DB.tutorials.disabled == true
-        SetCVarBool("showTutorials", not disabled)
+        local showTutorials = not (NX.DB.tutorials.disabled == true)
+        if CV and CV.ReconcileBool then
+            showTutorials = CV:ReconcileBool("showTutorials", showTutorials)
+        else
+            SetCVarBool("showTutorials", showTutorials)
+        end
+        NX.DB.tutorials.disabled = not showTutorials
     end
     function M:OnSettingsChanged() self:Apply() end
     function M:Init() self:Apply() end
@@ -41,8 +122,13 @@ do
     function M:Apply()
         if not NX.DB or not NX.DB.autoDismount then return end
         local cfg = NX.DB.autoDismount
-        SetCVarBool("autoDismount", cfg.enabled ~= false)
-        SetCVarBool("autoDismountFlying", cfg.flying ~= false)
+        if CV and CV.ReconcileBool then
+            cfg.enabled = CV:ReconcileBool("autoDismount", cfg.enabled ~= false)
+            cfg.flying = CV:ReconcileBool("autoDismountFlying", cfg.flying ~= false)
+        else
+            SetCVarBool("autoDismount", cfg.enabled ~= false)
+            SetCVarBool("autoDismountFlying", cfg.flying ~= false)
+        end
     end
     function M:OnSettingsChanged() self:Apply() end
     function M:Init() self:Apply() end
@@ -53,7 +139,11 @@ do
     local M = NX.AutoPlaceSpells
     function M:Apply()
         if not NX.DB or not NX.DB.autoPlaceSpells then return end
-        SetCVarBool("AutoPushSpellToActionBar", NX.DB.autoPlaceSpells.enabled == true)
+        if CV and CV.ReconcileBool then
+            NX.DB.autoPlaceSpells.enabled = CV:ReconcileBool("AutoPushSpellToActionBar", NX.DB.autoPlaceSpells.enabled == true)
+        else
+            SetCVarBool("AutoPushSpellToActionBar", NX.DB.autoPlaceSpells.enabled == true)
+        end
     end
     function M:OnSettingsChanged() self:Apply() end
     function M:Init() self:Apply() end
