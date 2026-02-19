@@ -32,11 +32,14 @@ local defaults = {
 
     moveSettingsPanel = false,
 
-    vault = {
-        enabled  = false,
-        fontPath = "Fonts\\FRIZQT__.TTF",
+    addonFontPath = "Fonts\\FRIZQT__.TTF",
+
+    greatVault = {
+        enabled  = true,
+        anchorX = 0,
+        anchorY = 0,
+        positionUnlocked = false,
         fontSize = 48,
-        offsetY  = 0,
         flashing = true,
     },
 
@@ -50,11 +53,12 @@ local defaults = {
 
     lowDurability = {
         enabled   = false,
-        fontPath  = "Fonts\\FRIZQT__.TTF",
+        anchorX = 0,
+        anchorY = 0,
+        positionUnlocked = false,
         fontSize  = 48,
         threshold = 20,
         flashing  = true,
-        offsetY   = 0,
         color     = "#FFFF00",
     },
 
@@ -98,6 +102,7 @@ local defaults = {
     waypointTracking = {
         autoTrackMapPins = true,
         unlimitedMapPinDistance = false,
+        highlightedQuestMarker = false,
     },
 
     autoPlaceSpells = {
@@ -178,6 +183,58 @@ local defaults = {
         currentExpansionOnly = false,
     },
 
+    simpleFirstCraftBonus = {
+        enabled = false,
+    },
+
+    clickableBuffs = {
+        enabled = false,
+        anchorX = 0,
+        anchorY = 0,
+        iconSize = 48,
+        textSize = 18,
+        iconZoomPct = 15,
+        flashMissing = false,
+    },
+
+    statsPlus = {
+        enabled = false,
+        anchorX = 0,
+        anchorY = 0,
+        positionUnlocked = false,
+        style = "VERTICAL",
+        textAlignment = "LEFT",
+        textGrowthDirection = "DOWN",
+        fontSize = 14,
+        showPrimaryStat = true,
+        showHaste = true,
+        showMastery = true,
+        showCriticalStrike = true,
+        showVersatility = true,
+        showArmor = true,
+        showMeleeAvoidance = true,
+    },
+
+    cleanNamesInInstances = {
+        enabled = false,
+
+        inInstanceShowGuild = false,
+        inInstanceShowTitle = false,
+        inInstanceSize = 12,
+        inInstanceMinAlpha = 1.0,
+    },
+
+    portals = {
+        enabled = true,
+        anchorX = 0,
+        anchorY = -35,
+        topRowMax = 8,
+        topRowHeightPct = 80,
+        perRow = 12,
+        smallRowHeightPct = 80,
+        spacing = 2,
+    },
+
 }
 
 local function ApplyDefaults(dst, src)
@@ -200,7 +257,9 @@ function CV:GetRaw(name)
     if type(name) ~= "string" then return nil end
 
     local value
-    if C_CVar and C_CVar.GetCVar then
+    if NX.Functions and NX.Functions.GetCVarValue then
+        value = NX.Functions:GetCVarValue(name)
+    elseif C_CVar and C_CVar.GetCVar then
         local ok, result = pcall(C_CVar.GetCVar, name)
         if ok then value = result end
     elseif GetCVar then
@@ -224,6 +283,10 @@ end
 
 function CV:SetBool(name, enabled)
     if type(name) ~= "string" then return end
+    if NX.Functions and NX.Functions.SetCVarBool then
+        NX.Functions:SetCVarBool(name, enabled)
+        return
+    end
     local value = enabled and "1" or "0"
     if C_CVar and C_CVar.SetCVar then
         pcall(C_CVar.SetCVar, name, value)
@@ -235,11 +298,18 @@ function CV:SetBool(name, enabled)
 end
 
 function CV:ReconcileBool(name, addonValue)
-    local raw = self:GetRaw(name)
-    if raw == "1" then return true end
-    if raw == "0" then return false end
-
     local resolved = addonValue and true or false
+    local raw = self:GetRaw(name)
+
+    if raw == "1" or raw == "0" then
+        local current = (raw == "1")
+        if current ~= resolved then
+            self:SetBool(name, resolved)
+            return resolved
+        end
+        return current
+    end
+
     self:SetBool(name, resolved)
     return resolved
 end
@@ -330,8 +400,67 @@ local function SeedCVarBackedDefaults(db)
     db._cvarSeeded = true
 end
 
+local function MigrateLegacyGreatVault(db)
+    if type(db) ~= "table" then
+        return
+    end
+
+    local legacy = db.vault
+    if type(legacy) ~= "table" then
+        return
+    end
+
+    db.greatVault = db.greatVault or {}
+    local target = db.greatVault
+
+    if target.enabled == nil and legacy.enabled ~= nil then
+        target.enabled = legacy.enabled and true or false
+    end
+    if target.anchorX == nil and legacy.anchorX ~= nil then
+        target.anchorX = legacy.anchorX
+    end
+    if target.anchorY == nil then
+        if legacy.anchorY ~= nil then
+            target.anchorY = legacy.anchorY
+        elseif legacy.offsetY ~= nil then
+            target.anchorY = legacy.offsetY
+        end
+    end
+    if target.fontSize == nil and legacy.fontSize ~= nil then
+        target.fontSize = legacy.fontSize
+    end
+    if target.flashing == nil and legacy.flashing ~= nil then
+        target.flashing = legacy.flashing and true or false
+    end
+end
+
+local function MigrateLegacyAddonFont(db)
+    if type(db) ~= "table" then
+        return
+    end
+
+    if type(db.addonFontPath) == "string" and db.addonFontPath ~= "" then
+        return
+    end
+
+    local candidates = {
+        db.greatVault and db.greatVault.fontPath,
+        db.lowDurability and db.lowDurability.fontPath,
+        db.vault and db.vault.fontPath,
+    }
+
+    for _, path in ipairs(candidates) do
+        if type(path) == "string" and path ~= "" then
+            db.addonFontPath = path
+            return
+        end
+    end
+end
+
 local function InitDB()
     NexusDB = NexusDB or {}
+    MigrateLegacyGreatVault(NexusDB)
+    MigrateLegacyAddonFont(NexusDB)
     ApplyDefaults(NexusDB, defaults)
     SeedCVarBackedDefaults(NexusDB)
     NX.DB = NexusDB
@@ -449,6 +578,10 @@ frame:SetScript("OnEvent", function(_, event, ...)
             NX.Vault:Init()
         end
 
+        if NX.Portals and NX.Portals.Init then
+            NX.Portals:Init()
+        end
+
         if NX.MotionSickness and NX.MotionSickness.Init then
             NX.MotionSickness:Init()
         end
@@ -472,6 +605,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.WaypointTracking and NX.WaypointTracking.Init then
             NX.WaypointTracking:Init()
+        end
+        if NX.CatalystCharges and NX.CatalystCharges.Init then
+            NX.CatalystCharges:Init()
         end
 
         if NX.AutoPlaceSpells and NX.AutoPlaceSpells.Init then
@@ -519,6 +655,18 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.AuctionHouse and NX.AuctionHouse.Init then
             NX.AuctionHouse:Init()
         end
+        if NX.SimpleFirstCraftBonus and NX.SimpleFirstCraftBonus.Init then
+            NX.SimpleFirstCraftBonus:Init()
+        end
+        if NX.ClickableBuffs and NX.ClickableBuffs.Init then
+            NX.ClickableBuffs:Init()
+        end
+        if NX.StatsPlus and NX.StatsPlus.Init then
+            NX.StatsPlus:Init()
+        end
+        if NX.CleanNamesInInstances and NX.CleanNamesInInstances.Init then
+            NX.CleanNamesInInstances:Init()
+        end
 
         CallModule("OnEvent", event, ...)
         return
@@ -538,6 +686,10 @@ frame:SetScript("OnEvent", function(_, event, ...)
             or event == "CHALLENGE_MODE_RESET" then
             NX.Functions:HandleRestrictionEvent(event, ...)
         end
+    end
+
+    if NX.Portals and NX.Portals.OnEvent then
+        NX.Portals:OnEvent(event, ...)
     end
 
     CallModule("OnEvent", event, ...)
@@ -562,14 +714,56 @@ frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("CHAT_MSG_PARTY")
 frame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
+frame:RegisterEvent("SPELLS_CHANGED")
 
 SLASH_NEXUS1 = "/nx"
-SLASH_NEXUS2 = "/nex"
-SLASH_NEXUS3 = "/nexus"
+SLASH_NEXUS2 = "/nexus"
 
-SlashCmdList["NEXUS"] = function()
+SlashCmdList["NEXUS"] = function(msg)
     if InCombatLockdown and InCombatLockdown() then
         print("|cffffd200Nexus:|r Slash command blocked in combat state.")
+        return
+    end
+
+    local text = string.lower(tostring(msg or ""))
+    text = string.match(text, "^%s*(.-)%s*$") or ""
+
+    if text ~= "" then
+        local cmd, rest = string.match(text, "^(%S+)%s*(.-)%s*$")
+        if cmd == "help" or cmd == "?" then
+            print("|cffffd200Nexus:|r /nx opens Settings")
+            print("|cffffd200Nexus:|r /nx buffs help")
+            print("|cffffd200Nexus:|r /nx stats help")
+            print("|cffffd200Nexus:|r /nx vault help")
+            print("|cffffd200Nexus:|r /nx durability help")
+            return
+        end
+        if cmd == "durability" and NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.HandleNxSlash then
+            local handled = NX.Common.LowDurability:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if cmd == "vault" and NX.Vault and NX.Vault.HandleNxSlash then
+            local handled = NX.Vault:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if cmd == "buffs" and NX.ClickableBuffs and NX.ClickableBuffs.HandleNxSlash then
+            local handled = NX.ClickableBuffs:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if cmd == "stats" and NX.StatsPlus and NX.StatsPlus.HandleNxSlash then
+            local handled = NX.StatsPlus:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+
+        print("|cffffd200Nexus:|r Unknown /nx command. Use: /nx help")
         return
     end
 

@@ -376,6 +376,15 @@ local function ResolveCVarListByGameFirst(cvarList, fallback)
     return resolved
 end
 
+local function ApplyCVarListFromDB(cvarList, value)
+    if type(cvarList) ~= "table" then return end
+    for _, cvarName in ipairs(cvarList) do
+        if CV and CV.SetBool then
+            CV:SetBool(cvarName, value)
+        end
+    end
+end
+
 local function EnsureDB()
     NX.DB.floatingCombatText = NX.DB.floatingCombatText or {}
     local cfg = NX.DB.floatingCombatText
@@ -438,7 +447,7 @@ function M:Apply()
     self._applyingCVars = true
 
     for dbKey, cvarList in pairs(FCT_DB_TO_CVARS) do
-        cfg[dbKey] = ResolveCVarListByGameFirst(cvarList, cfg[dbKey])
+        ApplyCVarListFromDB(cvarList, cfg[dbKey])
     end
 
     self._applyingCVars = false
@@ -462,6 +471,7 @@ function M:Init()
     end)
 
     C_Timer.After(0, function()
+        SyncDBFromCVars()
         self:Apply()
     end)
 end

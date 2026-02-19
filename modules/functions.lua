@@ -7,6 +7,11 @@ FN.restricted = FN.restricted or {
     inChallengeRun = false,
 }
 
+FN.DEFAULT_FONT_PATH = FN.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
+FN.DEFAULT_FONT_NAME = FN.DEFAULT_FONT_NAME or "FrizQT"
+FN.ANCHOR_MIN_WIDTH = FN.ANCHOR_MIN_WIDTH or 350
+FN.ANCHOR_MIN_HEIGHT = FN.ANCHOR_MIN_HEIGHT or 1
+
 function FN:InRestrictiveEnvironment()
     return self.restricted.inRaidEncounter or self.restricted.inChallengeRun
 end
@@ -106,4 +111,484 @@ function FN:FindKeystoneInBags(itemIDs)
         end
     end
     return nil
+end
+
+function FN:GetCVarValue(name)
+    if type(name) ~= "string" or name == "" then
+        return nil
+    end
+
+    if C_CVar and C_CVar.GetCVar then
+        local ok, value = pcall(C_CVar.GetCVar, name)
+        if ok then
+            return value
+        end
+    elseif GetCVar then
+        local ok, value = pcall(GetCVar, name)
+        if ok then
+            return value
+        end
+    end
+
+    return nil
+end
+
+function FN:SetCVarValue(name, value)
+    if type(name) ~= "string" or name == "" or value == nil then
+        return
+    end
+
+    if type(value) == "boolean" then
+        value = value and "1" or "0"
+    end
+
+    value = tostring(value)
+
+    local current = self:GetCVarValue(name)
+    if current == value then
+        return
+    end
+
+    if C_CVar and C_CVar.SetCVar then
+        pcall(C_CVar.SetCVar, name, value)
+        return
+    end
+
+    if SetCVar then
+        pcall(SetCVar, name, value)
+    end
+end
+
+function FN:GetCVarBool(name, fallback)
+    local value = self:GetCVarValue(name)
+    if value == nil then
+        return fallback and true or false
+    end
+
+    if type(value) == "boolean" then
+        return value
+    end
+
+    local s = tostring(value)
+    if s == "1" or s == "true" then
+        return true
+    end
+    if s == "0" or s == "false" then
+        return false
+    end
+
+    return fallback and true or false
+end
+
+function FN:SetCVarBool(name, enabled)
+    self:SetCVarValue(name, enabled and "1" or "0")
+end
+
+function FN:GetAvailableFontEntries()
+    local entries = {}
+    local seenPath = {}
+
+    local defaultPath = self.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
+    local defaultName = self.DEFAULT_FONT_NAME or "FrizQT"
+
+    seenPath[defaultPath] = true
+    entries[#entries + 1] = { path = defaultPath, name = defaultName }
+
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM and LSM.List and LSM.Fetch then
+        local names = LSM:List("font")
+        if type(names) == "table" then
+            table.sort(names)
+            for _, name in ipairs(names) do
+                local path = LSM:Fetch("font", name)
+                if type(path) == "string" and path ~= "" and not seenPath[path] then
+                    seenPath[path] = true
+                    entries[#entries + 1] = { path = path, name = name }
+                end
+            end
+        end
+    end
+
+    return entries
+end
+
+function FN:GetAddonFontOptionsData()
+    if not Settings or not Settings.CreateControlTextContainer then
+        return nil
+    end
+
+    local c = Settings.CreateControlTextContainer()
+    for _, e in ipairs(self:GetAvailableFontEntries()) do
+        c:Add(e.path, e.name)
+    end
+    return c:GetData()
+end
+
+function FN:IsFontPathAvailable(path)
+    if type(path) ~= "string" or path == "" then
+        return false
+    end
+
+    for _, e in ipairs(self:GetAvailableFontEntries()) do
+        if e.path == path then
+            return true
+        end
+    end
+
+    return false
+end
+
+function FN:GetAddonFontPath()
+    local defaultPath = self.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
+    local selected = NX and NX.DB and NX.DB.addonFontPath
+
+    if type(selected) ~= "string" or selected == "" then
+        return defaultPath
+    end
+
+    if self:IsFontPathAvailable(selected) then
+        return selected
+    end
+
+    return defaultPath
+end
+
+function FN:SetAddonFontPath(path)
+    if not NX or not NX.DB then
+        return self.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
+    end
+
+    local selected = path
+    if not self:IsFontPathAvailable(selected) then
+        selected = self.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
+    end
+
+    NX.DB.addonFontPath = selected
+    return selected
+end
+
+function FN:ApplyAddonFont(fontObject, fontSize, fontFlags, preferredPath)
+    if not fontObject or not fontObject.SetFont then
+        return false
+    end
+
+    local size = math.max(1, math.floor(tonumber(fontSize) or 12))
+    local flags = fontFlags
+    local defaultPath = self.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
+    local selectedPath = preferredPath or self:GetAddonFontPath()
+
+    if type(selectedPath) ~= "string" or selectedPath == "" then
+        selectedPath = defaultPath
+    end
+
+    if fontObject:SetFont(selectedPath, size, flags) then
+        return true
+    end
+
+    return fontObject:SetFont(defaultPath, size, flags)
+end
+
+function FN:ClampAnchorSize(width, height, minWidth, minHeight)
+    local defaultMinWidth = math.max(1, math.floor(tonumber(self.ANCHOR_MIN_WIDTH) or 500))
+    local defaultMinHeight = math.max(1, math.floor(tonumber(self.ANCHOR_MIN_HEIGHT) or 50))
+
+    local minW = math.max(1, math.floor(tonumber(minWidth) or defaultMinWidth))
+    local minH = math.max(1, math.floor(tonumber(minHeight) or defaultMinHeight))
+
+    local w = math.floor(tonumber(width) or minW)
+    local h = math.floor(tonumber(height) or minH)
+
+    if w < minW then
+        w = minW
+    end
+    if h < minH then
+        h = minH
+    end
+
+    return w, h
+end
+
+function FN:RoundToNearestPixel(value)
+    local n = tonumber(value) or 0
+    if n >= 0 then
+        return math.floor(n + 0.5)
+    end
+    return math.ceil(n - 0.5)
+end
+
+function FN:SetAnchorSize(frame, width, height, minWidth, minHeight)
+    local w, h = self:ClampAnchorSize(width, height, minWidth, minHeight)
+    if frame and frame.SetSize then
+        frame:SetSize(w, h)
+    end
+    return w, h
+end
+
+function FN:CreateAnchorFrame(parent, width, height, minWidth, minHeight)
+    local anchorParent = parent or UIParent
+    local frame = CreateFrame("Frame", nil, anchorParent)
+    if frame.SetClampedToScreen then
+        frame:SetClampedToScreen(false)
+    end
+    self:SetAnchorSize(frame, width, height, minWidth, minHeight)
+    return frame
+end
+
+function FN:CreateLockOnClickHandler(target, suppressPrint)
+    if type(target) ~= "table" then
+        return nil
+    end
+
+    return function()
+        if target.SetPositionUnlocked then
+            target:SetPositionUnlocked(false, suppressPrint)
+        end
+    end
+end
+
+function FN:CreateAnchorController(opts)
+    if type(opts) ~= "table" then
+        return nil
+    end
+
+    local parent = opts.parent
+    local moveFrame = opts.moveFrame or parent
+    if not parent or not moveFrame then
+        return nil
+    end
+
+    local nudgeStep = math.max(1, math.floor(tonumber(opts.nudgeStep) or 1))
+    local extraPadding = math.floor(tonumber(opts.extraVerticalPadding) or 0)
+    local labelFontSize = math.max(8, math.floor(tonumber(opts.labelFontSize) or 14))
+
+    local function isBlocked()
+        if opts.isBlocked and opts.isBlocked() then
+            return true
+        end
+        if InCombatLockdown and InCombatLockdown() then
+            return true
+        end
+        return false
+    end
+
+    local function isMoveEnabled()
+        if opts.isMoveEnabled then
+            return opts.isMoveEnabled() and true or false
+        end
+        return true
+    end
+
+    local function getOffsets()
+        if opts.getOffsets then
+            local x, y = opts.getOffsets()
+            return FN:RoundToNearestPixel(x), FN:RoundToNearestPixel(y)
+        end
+        return 0, 0
+    end
+
+    local function setOffsets(x, y)
+        if opts.setOffsets then
+            opts.setOffsets(FN:RoundToNearestPixel(x), FN:RoundToNearestPixel(y))
+        end
+    end
+
+    local controller = CreateFrame("Frame", nil, parent)
+    controller:SetFrameStrata("HIGH")
+    controller:SetPoint("TOPLEFT", parent, "TOPLEFT", -10, 10 + extraPadding)
+    controller:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 10, -10 - extraPadding)
+    controller:EnableMouse(true)
+    controller:SetMovable(false)
+
+    controller.BG = controller:CreateTexture(nil, "BACKGROUND")
+    controller.BG:SetAllPoints()
+    controller.BG:SetColorTexture(0.1, 0.6, 1.0, 0.16)
+
+    controller.Top = controller:CreateTexture(nil, "BORDER")
+    controller.Top:SetColorTexture(0.2, 0.8, 1.0, 0.95)
+    controller.Top:SetPoint("TOPLEFT", controller, "TOPLEFT", 0, 0)
+    controller.Top:SetPoint("TOPRIGHT", controller, "TOPRIGHT", 0, 0)
+    controller.Top:SetHeight(1)
+
+    controller.Bottom = controller:CreateTexture(nil, "BORDER")
+    controller.Bottom:SetColorTexture(0.2, 0.8, 1.0, 0.95)
+    controller.Bottom:SetPoint("BOTTOMLEFT", controller, "BOTTOMLEFT", 0, 0)
+    controller.Bottom:SetPoint("BOTTOMRIGHT", controller, "BOTTOMRIGHT", 0, 0)
+    controller.Bottom:SetHeight(1)
+
+    controller.Left = controller:CreateTexture(nil, "BORDER")
+    controller.Left:SetColorTexture(0.2, 0.8, 1.0, 0.95)
+    controller.Left:SetPoint("TOPLEFT", controller, "TOPLEFT", 0, 0)
+    controller.Left:SetPoint("BOTTOMLEFT", controller, "BOTTOMLEFT", 0, 0)
+    controller.Left:SetWidth(1)
+
+    controller.Right = controller:CreateTexture(nil, "BORDER")
+    controller.Right:SetColorTexture(0.2, 0.8, 1.0, 0.95)
+    controller.Right:SetPoint("TOPRIGHT", controller, "TOPRIGHT", 0, 0)
+    controller.Right:SetPoint("BOTTOMRIGHT", controller, "BOTTOMRIGHT", 0, 0)
+    controller.Right:SetWidth(1)
+
+    controller.CoordLabel = controller:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    controller.CoordLabel:SetPoint("TOP", controller, "TOP", 0, -4)
+    controller.CoordLabel:SetTextColor(0.85, 0.98, 1.0, 1)
+    self:ApplyAddonFont(controller.CoordLabel, labelFontSize, "OUTLINE")
+
+    controller.NameLabel = controller:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    controller.NameLabel:SetPoint("BOTTOM", controller, "BOTTOM", 0, 4)
+    controller.NameLabel:SetTextColor(0.75, 0.95, 1.0, 1)
+    self:ApplyAddonFont(controller.NameLabel, labelFontSize, "OUTLINE")
+
+    local function createArrowButton(arrowText, onClicked)
+        local button = CreateFrame("Button", nil, controller, "UIPanelButtonTemplate")
+        button:SetSize(22, 22)
+        button:SetFrameLevel(controller:GetFrameLevel() + 5)
+        button:SetText(arrowText or "")
+
+        if button.SetPropagateMouseClicks then
+            button:SetPropagateMouseClicks(false)
+        end
+        button:RegisterForClicks("LeftButtonUp")
+        button:SetScript("OnClick", function(_, mouseButton)
+            if mouseButton ~= "LeftButton" then
+                return
+            end
+            if onClicked then
+                onClicked()
+            end
+        end)
+        return button
+    end
+
+    local function nudge(dx, dy)
+        if isBlocked() or not isMoveEnabled() then
+            return
+        end
+        local x, y = getOffsets()
+        setOffsets(x + (dx or 0), y + (dy or 0))
+        controller:UpdateReadout()
+    end
+
+    controller.UpButton = createArrowButton("^", function() nudge(0, nudgeStep) end)
+    controller.UpButton:SetPoint("LEFT", controller, "RIGHT", 6, 14)
+    controller.DownButton = createArrowButton("v", function() nudge(0, -nudgeStep) end)
+    controller.DownButton:SetPoint("LEFT", controller, "RIGHT", 6, -14)
+    controller.LeftButton = createArrowButton("<", function() nudge(-nudgeStep, 0) end)
+    controller.LeftButton:SetPoint("TOP", controller, "BOTTOM", -16, -6)
+    controller.RightButton = createArrowButton(">", function() nudge(nudgeStep, 0) end)
+    controller.RightButton:SetPoint("TOP", controller, "BOTTOM", 16, -6)
+
+    controller.AlignVerticalButton = CreateFrame("Button", nil, controller, "UIPanelButtonTemplate")
+    controller.AlignVerticalButton:SetSize(110, 20)
+    controller.AlignVerticalButton:SetPoint("TOPLEFT", controller, "TOPLEFT", 4, -4)
+    controller.AlignVerticalButton:SetText("Center Vertically")
+    if controller.AlignVerticalButton.SetPropagateMouseClicks then
+        controller.AlignVerticalButton:SetPropagateMouseClicks(false)
+    end
+    controller.AlignVerticalButton:SetScript("OnClick", function()
+        if isBlocked() or not isMoveEnabled() then
+            return
+        end
+        local x = getOffsets()
+        setOffsets(x, 0)
+        controller:UpdateReadout()
+    end)
+
+    controller.AlignHorizontalButton = CreateFrame("Button", nil, controller, "UIPanelButtonTemplate")
+    controller.AlignHorizontalButton:SetSize(120, 20)
+    controller.AlignHorizontalButton:SetPoint("TOPRIGHT", controller, "TOPRIGHT", -4, -4)
+    controller.AlignHorizontalButton:SetText("Center Horizontally")
+    if controller.AlignHorizontalButton.SetPropagateMouseClicks then
+        controller.AlignHorizontalButton:SetPropagateMouseClicks(false)
+    end
+    controller.AlignHorizontalButton:SetScript("OnClick", function()
+        if isBlocked() or not isMoveEnabled() then
+            return
+        end
+        local _, y = getOffsets()
+        setOffsets(0, y)
+        controller:UpdateReadout()
+    end)
+
+    controller.LockButton = CreateFrame("Button", nil, controller, "UIPanelButtonTemplate")
+    controller.LockButton:SetSize(56, 20)
+    controller.LockButton:SetPoint("BOTTOMLEFT", controller, "BOTTOMLEFT", 4, 4)
+    controller.LockButton:SetText("Lock")
+    if controller.LockButton.SetPropagateMouseClicks then
+        controller.LockButton:SetPropagateMouseClicks(false)
+    end
+    controller.LockButton:SetScript("OnClick", function()
+        if isBlocked() then
+            return
+        end
+        if opts.onLock then
+            opts.onLock(controller)
+        end
+    end)
+
+    function controller:RefreshFonts()
+        if self.CoordLabel then
+            FN:ApplyAddonFont(self.CoordLabel, labelFontSize, "OUTLINE")
+        end
+        if self.NameLabel then
+            FN:ApplyAddonFont(self.NameLabel, labelFontSize, "OUTLINE")
+        end
+    end
+
+    function controller:SetElementName(name)
+        self._elementName = tostring(name or "Element")
+        self:UpdateReadout()
+    end
+
+    function controller:UpdateReadout()
+        local x, y = getOffsets()
+        if self.CoordLabel then
+            self.CoordLabel:SetText(string.format("%d, %d", x, y))
+        end
+        if self.NameLabel then
+            self.NameLabel:SetText(self._elementName or "Element")
+        end
+    end
+
+    controller.DragSurface = CreateFrame("Frame", nil, controller)
+    controller.DragSurface:SetPoint("TOPLEFT", controller, "TOPLEFT", 2, -24)
+    controller.DragSurface:SetPoint("BOTTOMRIGHT", controller, "BOTTOMRIGHT", -2, 24)
+    controller.DragSurface:EnableMouse(true)
+    controller.DragSurface:RegisterForDrag("LeftButton")
+
+    controller.DragSurface:SetScript("OnDragStart", function()
+        if isBlocked() or not isMoveEnabled() then
+            return
+        end
+        moveFrame:SetMovable(true)
+        moveFrame:StartMoving()
+        controller._isDragging = true
+        controller:SetScript("OnUpdate", function()
+            controller:UpdateReadout()
+        end)
+    end)
+
+    controller.DragSurface:SetScript("OnDragStop", function()
+        if not controller._isDragging then
+            return
+        end
+        controller._isDragging = false
+        moveFrame:StopMovingOrSizing()
+        moveFrame:SetMovable(false)
+        controller:SetScript("OnUpdate", nil)
+        if opts.onDragStop then
+            opts.onDragStop(controller)
+        end
+        controller:UpdateReadout()
+    end)
+
+    controller:SetScript("OnHide", function()
+        controller._isDragging = false
+        moveFrame:StopMovingOrSizing()
+        moveFrame:SetMovable(false)
+        controller:SetScript("OnUpdate", nil)
+    end)
+
+    controller:SetElementName(opts.elementName or "Element")
+    controller:RefreshFonts()
+    controller:UpdateReadout()
+    return controller
 end

@@ -296,6 +296,15 @@ local function OpenEditModeManager()
     end
 end
 
+local function ToggleCleanNamesInInstances()
+    if NX.CleanNamesInInstances and NX.CleanNamesInInstances.Toggle then
+        NX.CleanNamesInInstances:Toggle()
+        return
+    end
+
+    print("|cffffd200Nexus:|r Clean Names in Instances is not available.")
+end
+
 function CM:RegisterUtilitySlashes()
     if self._utilitySlashesRegistered then return end
 
@@ -316,6 +325,13 @@ function CM:RegisterUtilitySlashes()
                 return
             end
             RunOutOfCombat(OpenEditModeManager)
+        end
+    end
+
+    local cleanNamesRegistered = RegisterSlashAliases("NEXUS_CLEAN_NAMES", { "/cnames", "/cleanname", "/cleannames" })
+    if cleanNamesRegistered then
+        SlashCmdList["NEXUS_CLEAN_NAMES"] = function()
+            ToggleCleanNamesInInstances()
         end
     end
 

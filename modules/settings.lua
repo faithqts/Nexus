@@ -71,6 +71,108 @@ local function CreateEnabledDisabledDropdown(category, setting, tooltip)
     return init
 end
 
+local function CreateBooleanCheckboxControl(category, setting, tooltip)
+    if Settings and Settings.CreateCheckbox then
+        local ok = pcall(Settings.CreateCheckbox, category, setting, tooltip)
+        if ok then
+            return
+        end
+    end
+
+    CreateEnabledDisabledDropdown(category, setting, tooltip)
+end
+
+local function CreateToggleActionButton(category, label, onClick, tooltip)
+    local function runClick()
+        if onClick then
+            onClick()
+        end
+    end
+
+    if Settings and Settings.CreateElementInitializer and Settings.RegisterInitializer then
+        local data = {
+            name = label or "",
+            buttonText = "Toggle",
+            buttonClick = runClick,
+            tooltip = tooltip,
+        }
+
+        local ok, init = pcall(Settings.CreateElementInitializer, "SettingButtonControlTemplate", data)
+        if ok and init then
+            pcall(function()
+                if label and label ~= "" and init.AddSearchTags then
+                    init:AddSearchTags(label)
+                end
+                if init.AddSearchTags then
+                    init:AddSearchTags("Toggle")
+                end
+            end)
+
+            local okRegister = pcall(Settings.RegisterInitializer, category, init)
+            if okRegister then
+                return init
+            end
+        end
+    end
+
+    if Settings and Settings.CreateButton then
+        local ok, control = pcall(Settings.CreateButton, category, label or "", "Toggle", runClick, tooltip, true)
+        if ok and control then
+            return control
+        end
+    end
+
+    if Settings and Settings.CreateControl then
+        local ok, control = pcall(Settings.CreateControl, category, "UIPanelButtonTemplate", function(button)
+            if button.SetText then
+                button:SetText("Toggle")
+            end
+            if button.SetWidth then
+                button:SetWidth(200)
+            end
+            if button.SetHeight then
+                button:SetHeight(22)
+            end
+            if button.SetScript then
+                button:SetScript("OnClick", runClick)
+            end
+        end)
+        if ok and control then
+            return control
+        end
+    end
+
+    if Settings and Settings.CreateText then
+        Settings.CreateText(category, "Toggle button unavailable on this client build.")
+    end
+
+    return nil
+end
+
+local function CreateStringSettingControl(category, setting, tooltip)
+    if Settings and Settings.CreateEditBox then
+        Settings.CreateEditBox(category, setting, tooltip)
+        return
+    end
+
+    if Settings and Settings.CreateText then
+        Settings.CreateText(category, "Text input is not available on this client build.")
+    end
+end
+
+local function GetAddonFontOptionsData()
+    if NX.Functions and NX.Functions.GetAddonFontOptionsData then
+        local data = NX.Functions:GetAddonFontOptionsData()
+        if data then
+            return data
+        end
+    end
+
+    local c = Settings.CreateControlTextContainer()
+    c:Add("Fonts\\FRIZQT__.TTF", "FrizQT")
+    return c:GetData()
+end
+
 local MARKERS = {
     { value = nil, label = "None" },
     { value = 1, label = "Star" },
@@ -141,9 +243,11 @@ local function CreateLandingPanel()
         line:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -10)
         line:SetWidth(620)
         line:SetJustifyH("LEFT")
-        local fontPath, fontSize, fontFlags = line:GetFont()
-        if fontPath and fontSize then
-            line:SetFont(fontPath, fontSize + 2, fontFlags)
+        local _, fontSize, fontFlags = line:GetFont()
+        if fontSize then
+            if NX.Functions and NX.Functions.ApplyAddonFont then
+                NX.Functions:ApplyAddonFont(line, fontSize + 2, fontFlags)
+            end
         end
         line:SetTextColor(1.0, 0.82, 0.0, 1)
         line:SetText(text)
@@ -204,74 +308,6 @@ local function BuildLowDurabilityControls(category)
         )
 
         CreateEnabledDisabledDropdown(category, setting, "Enable or disable the Low Durability warning.")
-    end
-
-    do
-        local FRIZQT_PATH = "Fonts\\FRIZQT__.TTF"
-        local FRIZQT_NAME = "FrizQT"
-
-        local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-
-        local function GetFontOptionsData()
-            local c = Settings.CreateControlTextContainer()
-
-            local seenPath = {}
-            local entries = {}
-
-            seenPath[FRIZQT_PATH] = true
-            table.insert(entries, { path = FRIZQT_PATH, name = FRIZQT_NAME })
-
-            if LSM then
-                local names = LSM:List("font")
-                table.sort(names)
-                for _, name in ipairs(names) do
-                    local path = LSM:Fetch("font", name)
-                    if path and not seenPath[path] then
-                        seenPath[path] = true
-                        table.insert(entries, { path = path, name = name })
-                    end
-                end
-            end
-
-            for _, e in ipairs(entries) do
-                c:Add(e.path, e.name)
-            end
-
-            return c:GetData()
-        end
-
-        local function GetValue()
-            local p = NX.DB.lowDurability and NX.DB.lowDurability.fontPath
-            if type(p) ~= "string" or p == "" then
-                return FRIZQT_PATH
-            end
-            return p
-        end
-
-        local function SetValue(v)
-            NX.DB.lowDurability = NX.DB.lowDurability or {}
-            if type(v) ~= "string" or v == "" then
-                v = FRIZQT_PATH
-            end
-
-            NX.DB.lowDurability.fontPath = v
-            if NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.OnSettingsChanged then
-                NX.Common.LowDurability:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_LOWDURABILITY_FONT",
-            Settings.VarType.String,
-            "Font",
-            FRIZQT_PATH,
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(category, setting, GetFontOptionsData, "Selects the font used for the Low Durability warning text.")
-        init.reinitializeOnValueChanged = true
     end
 
     do
@@ -367,53 +403,6 @@ local function BuildLowDurabilityControls(category)
     end
 
     do
-        local function GetScreenHeight()
-            local h = UIParent and UIParent.GetHeight and UIParent:GetHeight()
-            h = tonumber(h) or 1080
-            return math.floor(h + 0.5)
-        end
-
-        local function Clamp(v, lo, hi)
-            if v < lo then return lo end
-            if v > hi then return hi end
-            return v
-        end
-
-        local function GetValue()
-            return tonumber(NX.DB.lowDurability and NX.DB.lowDurability.offsetY) or 0
-        end
-
-        local function SetValue(v)
-            NX.DB.lowDurability = NX.DB.lowDurability or {}
-            local maxH = GetScreenHeight()
-            v = tonumber(v) or 0
-            v = math.floor(v + 0.5)
-            v = Clamp(v, -maxH, maxH)
-
-            NX.DB.lowDurability.offsetY = v
-            if NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.OnSettingsChanged then
-                NX.Common.LowDurability:OnSettingsChanged()
-            end
-        end
-
-        local defaultMax = GetScreenHeight()
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_LOWDURABILITY_OFFSETY",
-            Settings.VarType.Number,
-            "Y Offset",
-            0,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(-defaultMax, defaultMax, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, setting, options, "Controls the vertical position from screen center.")
-    end
-
-    do
         local function GetColorOptionsData()
             local c = Settings.CreateControlTextContainer()
             local list = (NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.GetColorList)
@@ -461,41 +450,86 @@ local function BuildLowDurabilityControls(category)
 
     do
         local function GetValue()
-            return NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.IsPreviewActive
-                and NX.Common.LowDurability:IsPreviewActive()
+            return not not (NX.DB.lowDurability and NX.DB.lowDurability.positionUnlocked)
         end
 
         local function SetValue(v)
-            local wantOn = v and true or false
-            local isOn = (GetValue() == true)
-            if wantOn ~= isOn then
-                if NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.TogglePreview then
-                    NX.Common.LowDurability:TogglePreview()
+            if NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.SetPositionUnlocked then
+                NX.Common.LowDurability:SetPositionUnlocked(v, true)
+            else
+                NX.DB.lowDurability = NX.DB.lowDurability or {}
+                NX.DB.lowDurability.positionUnlocked = not not v
+                if NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.OnSettingsChanged then
+                    NX.Common.LowDurability:OnSettingsChanged()
                 end
             end
         end
 
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_LOWDURABILITY_PREVIEW_TOGGLE",
-            Settings.VarType.Boolean,
-            "Preview Message",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        Settings.CreateCheckbox(
-            category,
-            setting,
-            "Shows or hides a preview of the warning using your current settings."
-        )
+        CreateToggleActionButton(category, "Show Anchor", function()
+            SetValue(not GetValue())
+        end)
     end
+
 end
 
 local function BuildCommonControls(category)
     if Settings.CreateSectionHeader then
         Settings.CreateSectionHeader(category, "Common")
+    end
+
+    do
+        local function GetValue()
+            if NX.Functions and NX.Functions.GetAddonFontPath then
+                return NX.Functions:GetAddonFontPath()
+            end
+            local p = NX.DB and NX.DB.addonFontPath
+            if type(p) ~= "string" or p == "" then
+                return "Fonts\\FRIZQT__.TTF"
+            end
+            return p
+        end
+
+        local function SetValue(v)
+            if NX.Functions and NX.Functions.SetAddonFontPath then
+                NX.Functions:SetAddonFontPath(v)
+            else
+                NX.DB.addonFontPath = (type(v) == "string" and v ~= "") and v or "Fonts\\FRIZQT__.TTF"
+            end
+
+            if NX.Vault and NX.Vault.OnSettingsChanged then
+                NX.Vault:OnSettingsChanged()
+            end
+            if NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.OnSettingsChanged then
+                NX.Common.LowDurability:OnSettingsChanged()
+            end
+            if NX.ClickableBuffs and NX.ClickableBuffs.OnSettingsChanged then
+                NX.ClickableBuffs:OnSettingsChanged()
+            end
+            if NX.Portals and NX.Portals.OnSettingsChanged then
+                NX.Portals:OnSettingsChanged()
+            end
+            if NX.CatalystCharges and NX.CatalystCharges.Refresh then
+                NX.CatalystCharges:Refresh()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_ADDON_FONT_FAMILY",
+            Settings.VarType.String,
+            "Addon Font Family",
+            "Fonts\\FRIZQT__.TTF",
+            GetValue,
+            SetValue
+        )
+
+        local init = Settings.CreateDropdown(
+            category,
+            setting,
+            GetAddonFontOptionsData,
+            "Selects the shared font family used by Nexus labels and module text. Falls back to FrizQT when unavailable."
+        )
+        init.reinitializeOnValueChanged = true
     end
 
     do
@@ -698,31 +732,25 @@ local function BuildSlashCommandControls(category)
 end
 
 local function BuildGreatVaultControls(category)
-    local function IsPreviewActive()
-        return NX.Vault and NX.Vault.IsPreviewActive and NX.Vault:IsPreviewActive()
-    end
-
-    local function TogglePreview()
-        if not (NX.DB and NX.DB.vault and NX.DB.vault.enabled) then
-            if NX.Vault and NX.Vault.StopPreview then
-                NX.Vault:StopPreview()
-            end
-            return
-        end
-        if NX.Vault and NX.Vault.TogglePreview then
-            NX.Vault:TogglePreview()
-        end
+    local function EnsureDB()
+        NX.DB.greatVault = NX.DB.greatVault or {}
+        return NX.DB.greatVault
     end
 
     do
         local function GetValue()
-            return (NX.DB.vault and NX.DB.vault.enabled) and true or false
+            local db = EnsureDB()
+            return db.enabled and true or false
         end
 
         local function SetValue(v)
-            NX.DB.vault.enabled = v and true or false
-            if not NX.DB.vault.enabled and NX.Vault and NX.Vault.StopPreview then
+            local db = EnsureDB()
+            db.enabled = v and true or false
+            if not db.enabled and NX.Vault and NX.Vault.StopPreview then
                 NX.Vault:StopPreview()
+            end
+            if NX.Vault and NX.Vault.OnSettingsChanged then
+                NX.Vault:OnSettingsChanged()
             end
         end
 
@@ -744,74 +772,9 @@ local function BuildGreatVaultControls(category)
     end
 
     do
-        local FRIZQT_PATH = "Fonts\\FRIZQT__.TTF"
-        local FRIZQT_NAME = "FrizQT"
-
-        local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-
-        local function GetFontOptionsData()
-            local c = Settings.CreateControlTextContainer()
-
-            local seenPath = {}
-            local entries = {}
-
-            seenPath[FRIZQT_PATH] = true
-            table.insert(entries, { path = FRIZQT_PATH, name = FRIZQT_NAME })
-
-            if LSM then
-                local names = LSM:List("font")
-                table.sort(names)
-                for _, name in ipairs(names) do
-                    local path = LSM:Fetch("font", name)
-                    if path and not seenPath[path] then
-                        seenPath[path] = true
-                        table.insert(entries, { path = path, name = name })
-                    end
-                end
-            end
-
-            for _, e in ipairs(entries) do
-                c:Add(e.path, e.name)
-            end
-
-            return c:GetData()
-        end
-
         local function GetValue()
-            local p = NX.DB.vault and NX.DB.vault.fontPath
-            if type(p) ~= "string" or p == "" then
-                return FRIZQT_PATH
-            end
-            return p
-        end
-
-        local function SetValue(v)
-            if type(v) ~= "string" or v == "" then
-                v = FRIZQT_PATH
-            end
-            NX.DB.vault.fontPath = v
-            if NX.Vault and NX.Vault.OnSettingsChanged then
-                NX.Vault:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_VAULT_FONT",
-            Settings.VarType.String,
-            "Font",
-            FRIZQT_PATH,
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(category, setting, GetFontOptionsData, "Selects the font used for the Great Vault banner text.")
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.vault and NX.DB.vault.fontSize) or 48
+            local db = EnsureDB()
+            return tonumber(db.fontSize) or 48
         end
 
         local function SetValue(v)
@@ -820,7 +783,8 @@ local function BuildGreatVaultControls(category)
             if v < 1 then v = 1 end
             if v > 128 then v = 128 end
 
-            NX.DB.vault.fontSize = v
+            local db = EnsureDB()
+            db.fontSize = v
             if NX.Vault and NX.Vault.OnSettingsChanged then
                 NX.Vault:OnSettingsChanged()
             end
@@ -842,63 +806,14 @@ local function BuildGreatVaultControls(category)
     end
 
     do
-        local function GetScreenHeight()
-            local h = UIParent and UIParent.GetHeight and UIParent:GetHeight()
-            h = tonumber(h) or 1080
-            return math.floor(h + 0.5)
-        end
-
-        local function Clamp(v, lo, hi)
-            if v < lo then return lo end
-            if v > hi then return hi end
-            return v
-        end
-
         local function GetValue()
-            return tonumber(NX.DB.vault and NX.DB.vault.offsetY) or 0
+            local db = EnsureDB()
+            return db.flashing and true or false
         end
 
         local function SetValue(v)
-            local maxH = GetScreenHeight()
-            v = tonumber(v) or 0
-            v = math.floor(v + 0.5)
-            v = Clamp(v, -maxH, maxH)
-
-            NX.DB.vault.offsetY = v
-            if NX.Vault and NX.Vault.OnSettingsChanged then
-                NX.Vault:OnSettingsChanged()
-            end
-        end
-
-        local defaultMax = GetScreenHeight()
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_VAULT_OFFSETY",
-            Settings.VarType.Number,
-            "Offset Y",
-            0,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(-defaultMax, defaultMax, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(
-            category,
-            setting,
-            options,
-            "Controls the vertical position on the screen, measured from the screen center."
-        )
-    end
-
-    do
-        local function GetValue()
-            return (NX.DB.vault and NX.DB.vault.flashing) and true or false
-        end
-
-        local function SetValue(v)
-            NX.DB.vault.flashing = v and true or false
+            local db = EnsureDB()
+            db.flashing = v and true or false
             if NX.Vault and NX.Vault.OnSettingsChanged then
                 NX.Vault:OnSettingsChanged()
             end
@@ -922,30 +837,26 @@ local function BuildGreatVaultControls(category)
     end
 
     do
-        local function GetValue() return IsPreviewActive() end
+        local function GetValue()
+            local db = EnsureDB()
+            return db.positionUnlocked == true
+        end
+
         local function SetValue(v)
-            local wantOn = v and true or false
-            local isOn = IsPreviewActive()
-            if wantOn ~= isOn then
-                TogglePreview()
+            if NX.Vault and NX.Vault.SetPositionUnlocked then
+                NX.Vault:SetPositionUnlocked(v, true)
+            else
+                local db = EnsureDB()
+                db.positionUnlocked = v and true or false
+                if NX.Vault and NX.Vault.OnSettingsChanged then
+                    NX.Vault:OnSettingsChanged()
+                end
             end
         end
 
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_VAULT_PREVIEW_TOGGLE",
-            Settings.VarType.Boolean,
-            "Preview Message",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        Settings.CreateCheckbox(
-            category,
-            setting,
-            "Shows or hides a preview of the Great Vault banner using your current settings."
-        )
+        CreateToggleActionButton(category, "Show Anchor", function()
+            SetValue(not GetValue())
+        end)
     end
 end
 
@@ -1339,6 +1250,195 @@ local function BuildMythicPlusControls(category)
             "Automatically marks the healer during the Mythic+ Start Countdown."
         )
         init.reinitializeOnValueChanged = true
+    end
+end
+
+local function BuildPortalsControls(category)
+    local function Notify()
+        if NX.Portals and NX.Portals.OnSettingsChanged then
+            NX.Portals:OnSettingsChanged()
+        end
+    end
+
+    do
+        local function GetValue()
+            if NX.DB.portals == nil then return true end
+            return NX.DB.portals.enabled ~= false
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            NX.DB.portals.enabled = not not v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_PORTALS_ENABLED", Settings.VarType.Boolean, "Portals", true, GetValue, SetValue)
+        CreateEnabledDisabledDropdown(category, setting, "Enable or disable the Portals bar.")
+    end
+
+    do
+        local function GetValue()
+            if NX.DB.portals == nil then return true end
+            return NX.DB.portals.showLegacyPortals ~= false
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            NX.DB.portals.showLegacyPortals = not not v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_PORTALS_SHOW_LEGACY",
+            Settings.VarType.Boolean,
+            "Show Old Portals",
+            true,
+            GetValue,
+            SetValue
+        )
+        CreateEnabledDisabledDropdown(category, setting, "Show or hide old raid and dungeon portals. When disabled, only pinned top-row portals are shown.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.portals and NX.DB.portals.anchorX) or 0
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            v = math.floor((tonumber(v) or 0) + 0.5)
+            if v < -500 then v = -500 end
+            if v > 500 then v = 500 end
+            NX.DB.portals.anchorX = v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_PORTALS_ANCHOR_X", Settings.VarType.Number, "Anchor X", 0, GetValue, SetValue)
+        local options = Settings.CreateSliderOptions(-500, 500, 1)
+        ApplyRightLabel(options)
+        Settings.CreateSlider(category, setting, options, "Horizontal anchor offset for the portals bar.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.portals and NX.DB.portals.anchorY) or -35
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            v = math.floor((tonumber(v) or -35) + 0.5)
+            if v < -500 then v = -500 end
+            if v > 500 then v = 500 end
+            NX.DB.portals.anchorY = v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_PORTALS_ANCHOR_Y", Settings.VarType.Number, "Anchor Y", -35, GetValue, SetValue)
+        local options = Settings.CreateSliderOptions(-500, 500, 1)
+        ApplyRightLabel(options)
+        Settings.CreateSlider(category, setting, options, "Vertical anchor offset for the portals bar.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.portals and NX.DB.portals.topRowMax) or 8
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            v = math.floor((tonumber(v) or 8) + 0.5)
+            if v < 6 then v = 6 end
+            if v > 8 then v = 8 end
+            NX.DB.portals.topRowMax = v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_PORTALS_TOP_ROW_MAX", Settings.VarType.Number, "Top Row Portals", 8, GetValue, SetValue)
+        local options = Settings.CreateSliderOptions(6, 8, 1)
+        ApplyRightLabel(options)
+        Settings.CreateSlider(category, setting, options, "Maximum pinned portals in the top row.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.portals and NX.DB.portals.topRowHeightPct) or 80
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            v = math.floor((tonumber(v) or 80) + 0.5)
+            if v < 1 then v = 1 end
+            if v > 100 then v = 100 end
+            NX.DB.portals.topRowHeightPct = v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_PORTALS_TOP_ROW_HEIGHT", Settings.VarType.Number, "Top Row Height %", 80, GetValue, SetValue)
+        local options = Settings.CreateSliderOptions(1, 100, 1)
+        ApplyRightLabel(options, function(v) return string.format("%d%%", v) end)
+        Settings.CreateSlider(category, setting, options, "Top row button height as a percentage of button width.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.portals and NX.DB.portals.perRow) or 12
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            v = math.floor((tonumber(v) or 12) + 0.5)
+            if v < 8 then v = 8 end
+            if v > 12 then v = 12 end
+            NX.DB.portals.perRow = v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_PORTALS_PER_ROW", Settings.VarType.Number, "Portals Per Row", 12, GetValue, SetValue)
+        local options = Settings.CreateSliderOptions(8, 12, 1)
+        ApplyRightLabel(options)
+        Settings.CreateSlider(category, setting, options, "Portals per row for non-pinned portal buttons.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.portals and NX.DB.portals.smallRowHeightPct) or 80
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            v = math.floor((tonumber(v) or 80) + 0.5)
+            if v < 1 then v = 1 end
+            if v > 100 then v = 100 end
+            NX.DB.portals.smallRowHeightPct = v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_PORTALS_SMALL_ROW_HEIGHT", Settings.VarType.Number, "Small Row Height %", 80, GetValue, SetValue)
+        local options = Settings.CreateSliderOptions(1, 100, 1)
+        ApplyRightLabel(options, function(v) return string.format("%d%%", v) end)
+        Settings.CreateSlider(category, setting, options, "Small row button height as a percentage of button width.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.portals and NX.DB.portals.spacing) or 2
+        end
+
+        local function SetValue(v)
+            NX.DB.portals = NX.DB.portals or {}
+            v = tonumber(v) or 2
+            v = math.floor((v * 5) + 0.5) / 5
+            if v < 0 then v = 0 end
+            if v > 5 then v = 5 end
+            NX.DB.portals.spacing = v
+            Notify()
+        end
+
+        local setting = Settings.RegisterProxySetting(category, "NEXUS_PORTALS_SPACING", Settings.VarType.Number, "Spacing", 2, GetValue, SetValue)
+        local options = Settings.CreateSliderOptions(0, 5, 0.2)
+        ApplyRightLabel(options, function(v) return string.format("%.1f", v) end)
+        Settings.CreateSlider(category, setting, options, "Spacing between portal buttons.")
     end
 end
 
@@ -2064,6 +2164,484 @@ local function BuildAuctionHouseFilterControls(category)
     CreateEnabledDisabledDropdown(category, setting, "Automatically enables 'Current Expansion Only' when the Auction House opens.")
 end
 
+local function BuildSimpleFirstCraftBonusControls(category)
+    local function GetValue()
+        return not not (NX.DB.simpleFirstCraftBonus and NX.DB.simpleFirstCraftBonus.enabled)
+    end
+
+    local function SetValue(v)
+        NX.DB.simpleFirstCraftBonus = NX.DB.simpleFirstCraftBonus or {}
+        NX.DB.simpleFirstCraftBonus.enabled = not not v
+        if NX.SimpleFirstCraftBonus and NX.SimpleFirstCraftBonus.OnSettingsChanged then
+            NX.SimpleFirstCraftBonus:OnSettingsChanged()
+        end
+    end
+
+    local setting = Settings.RegisterProxySetting(
+        category,
+        "NEXUS_SIMPLE_FIRST_CRAFT_BONUS",
+        Settings.VarType.Boolean,
+        "Simple First Craft Bonus",
+        false,
+        GetValue,
+        SetValue
+    )
+
+    CreateEnabledDisabledDropdown(category, setting, "Shows a first-craft icon beside eligible profession recipes.")
+end
+
+local function BuildClickableBuffsControls(category)
+    local function GetValue()
+        return not not (NX.DB.clickableBuffs and NX.DB.clickableBuffs.enabled)
+    end
+
+    local function SetValue(v)
+        NX.DB.clickableBuffs = NX.DB.clickableBuffs or {}
+        NX.DB.clickableBuffs.enabled = not not v
+        if NX.ClickableBuffs and NX.ClickableBuffs.OnSettingsChanged then
+            NX.ClickableBuffs:OnSettingsChanged()
+        end
+    end
+
+    local setting = Settings.RegisterProxySetting(
+        category,
+        "NEXUS_CLICKABLE_BUFFS_ENABLED",
+        Settings.VarType.Boolean,
+        "Clickable Buffs",
+        false,
+        GetValue,
+        SetValue
+    )
+
+    CreateEnabledDisabledDropdown(
+        category,
+        setting,
+        "Shows clickable out-of-combat buff and consumable buttons when buffs are missing and items are available in bags."
+    )
+
+    do
+        local function GetValue()
+            return not not (NX.DB.clickableBuffs and NX.DB.clickableBuffs.flashMissing)
+        end
+
+        local function SetValue(v)
+            NX.DB.clickableBuffs = NX.DB.clickableBuffs or {}
+            NX.DB.clickableBuffs.flashMissing = not not v
+            if NX.ClickableBuffs and NX.ClickableBuffs.OnSettingsChanged then
+                NX.ClickableBuffs:OnSettingsChanged()
+            end
+        end
+
+        local settingFlash = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_CLICKABLE_BUFFS_FLASH_MISSING",
+            Settings.VarType.Boolean,
+            "Flash When Missing",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateEnabledDisabledDropdown(category, settingFlash, "Makes missing clickable buff buttons pulse.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.clickableBuffs and NX.DB.clickableBuffs.iconSize) or 48
+        end
+
+        local function SetValue(v)
+            NX.DB.clickableBuffs = NX.DB.clickableBuffs or {}
+            v = math.floor((tonumber(v) or 48) + 0.5)
+            if v < 24 then v = 24 end
+            if v > 96 then v = 96 end
+            NX.DB.clickableBuffs.iconSize = v
+            if NX.ClickableBuffs and NX.ClickableBuffs.OnSettingsChanged then
+                NX.ClickableBuffs:OnSettingsChanged()
+            end
+        end
+
+        local settingSize = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_CLICKABLE_BUFFS_ICON_SIZE",
+            Settings.VarType.Number,
+            "Icon Size",
+            48,
+            GetValue,
+            SetValue
+        )
+
+        local optionsSize = Settings.CreateSliderOptions(24, 96, 1)
+        ApplyRightLabel(optionsSize, function(v) return string.format("%dpx", v) end)
+        Settings.CreateSlider(category, settingSize, optionsSize, "Clickable Buff button size in pixels.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.clickableBuffs and NX.DB.clickableBuffs.textSize) or 18
+        end
+
+        local function SetValue(v)
+            NX.DB.clickableBuffs = NX.DB.clickableBuffs or {}
+            v = math.floor((tonumber(v) or 18) + 0.5)
+            if v < 10 then v = 10 end
+            if v > 32 then v = 32 end
+            NX.DB.clickableBuffs.textSize = v
+            if NX.ClickableBuffs and NX.ClickableBuffs.OnSettingsChanged then
+                NX.ClickableBuffs:OnSettingsChanged()
+            end
+        end
+
+        local settingTextSize = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_CLICKABLE_BUFFS_TEXT_SIZE",
+            Settings.VarType.Number,
+            "Text Size",
+            18,
+            GetValue,
+            SetValue
+        )
+
+        local optionsTextSize = Settings.CreateSliderOptions(10, 32, 1)
+        ApplyRightLabel(optionsTextSize, function(v) return string.format("%dpx", v) end)
+        Settings.CreateSlider(category, settingTextSize, optionsTextSize, "Clickable Buff label text size in pixels.")
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.clickableBuffs and NX.DB.clickableBuffs.iconZoomPct) or 15
+        end
+
+        local function SetValue(v)
+            NX.DB.clickableBuffs = NX.DB.clickableBuffs or {}
+            v = tonumber(v) or 15
+            v = math.floor((v / 5) + 0.5) * 5
+            if v < 0 then v = 0 end
+            if v > 100 then v = 100 end
+            NX.DB.clickableBuffs.iconZoomPct = v
+            if NX.ClickableBuffs and NX.ClickableBuffs.OnSettingsChanged then
+                NX.ClickableBuffs:OnSettingsChanged()
+            end
+        end
+
+        local settingIconZoom = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_CLICKABLE_BUFFS_ICON_ZOOM",
+            Settings.VarType.Number,
+            "Icon Zoom",
+            15,
+            GetValue,
+            SetValue
+        )
+
+        local optionsIconZoom = Settings.CreateSliderOptions(0, 100, 5)
+        ApplyRightLabel(optionsIconZoom, function(v) return string.format("%d%%", v) end)
+        Settings.CreateSlider(category, settingIconZoom, optionsIconZoom, "Zooms icon art inward while keeping button size unchanged.")
+    end
+
+    do
+        local function GetValue()
+            return not not (NX.DB.clickableBuffs and NX.DB.clickableBuffs.positionUnlocked)
+        end
+
+        local function SetValue(v)
+            if NX.ClickableBuffs and NX.ClickableBuffs.SetPositionUnlocked then
+                NX.ClickableBuffs:SetPositionUnlocked(v, true)
+            else
+                NX.DB.clickableBuffs = NX.DB.clickableBuffs or {}
+                NX.DB.clickableBuffs.positionUnlocked = not not v
+                if NX.ClickableBuffs and NX.ClickableBuffs.OnSettingsChanged then
+                    NX.ClickableBuffs:OnSettingsChanged()
+                end
+            end
+        end
+
+        CreateToggleActionButton(category, "Show Anchor", function()
+            SetValue(not GetValue())
+        end)
+    end
+end
+
+local function BuildStatsPlusControls(category)
+    do
+        local function GetValue()
+            return not not (NX.DB.statsPlus and NX.DB.statsPlus.enabled)
+        end
+
+        local function SetValue(v)
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
+            NX.DB.statsPlus.enabled = not not v
+            if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
+                NX.StatsPlus:OnSettingsChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_STATSPLUS_ENABLED",
+            Settings.VarType.Boolean,
+            "Enabled",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateBooleanCheckboxControl(category, setting, "Enable or disable Stats+.")
+    end
+
+    do
+        local function GetStyleOptionsData()
+            local c = Settings.CreateControlTextContainer()
+            c:Add("VERTICAL", "Vertical")
+            c:Add("HORIZONTAL", "Horizontal")
+            return c:GetData()
+        end
+
+        local function GetValue()
+            local v = NX.DB.statsPlus and NX.DB.statsPlus.style
+            v = string.upper(tostring(v or "VERTICAL"))
+            if v ~= "VERTICAL" and v ~= "HORIZONTAL" then
+                v = "VERTICAL"
+            end
+            return v
+        end
+
+        local function SetValue(v)
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
+            v = string.upper(tostring(v or "VERTICAL"))
+            if v ~= "VERTICAL" and v ~= "HORIZONTAL" then
+                v = "VERTICAL"
+            end
+            NX.DB.statsPlus.style = v
+            if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
+                NX.StatsPlus:OnSettingsChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_STATSPLUS_STYLE",
+            Settings.VarType.String,
+            "Style",
+            "VERTICAL",
+            GetValue,
+            SetValue
+        )
+
+        local init = Settings.CreateDropdown(category, setting, GetStyleOptionsData, "Choose whether Stats+ is shown in stacked lines or a single pipe-separated row.")
+        init.reinitializeOnValueChanged = true
+    end
+
+    do
+        local function GetAlignmentOptionsData()
+            local c = Settings.CreateControlTextContainer()
+            c:Add("LEFT", "Left")
+            c:Add("CENTER", "Center")
+            c:Add("RIGHT", "Right")
+            return c:GetData()
+        end
+
+        local function GetValue()
+            local v = NX.DB.statsPlus and NX.DB.statsPlus.textAlignment
+            v = string.upper(tostring(v or "LEFT"))
+            if v ~= "LEFT" and v ~= "CENTER" and v ~= "RIGHT" then
+                v = "LEFT"
+            end
+            return v
+        end
+
+        local function SetValue(v)
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
+            v = string.upper(tostring(v or "LEFT"))
+            if v ~= "LEFT" and v ~= "CENTER" and v ~= "RIGHT" then
+                v = "LEFT"
+            end
+            NX.DB.statsPlus.textAlignment = v
+            if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
+                NX.StatsPlus:OnSettingsChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_STATSPLUS_ALIGNMENT",
+            Settings.VarType.String,
+            "Text Alignment",
+            "LEFT",
+            GetValue,
+            SetValue
+        )
+
+        local init = Settings.CreateDropdown(category, setting, GetAlignmentOptionsData, "Choose line alignment.")
+        init.reinitializeOnValueChanged = true
+    end
+
+    do
+        local function GetGrowthDirectionOptionsData()
+            local c = Settings.CreateControlTextContainer()
+            c:Add("DOWN", "Down")
+            c:Add("UP", "Up")
+            return c:GetData()
+        end
+
+        local function GetValue()
+            local v = NX.DB.statsPlus and NX.DB.statsPlus.textGrowthDirection
+            v = string.upper(tostring(v or "DOWN"))
+            if v ~= "UP" and v ~= "DOWN" then
+                v = "DOWN"
+            end
+            return v
+        end
+
+        local function SetValue(v)
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
+            v = string.upper(tostring(v or "DOWN"))
+            if v ~= "UP" and v ~= "DOWN" then
+                v = "DOWN"
+            end
+            NX.DB.statsPlus.textGrowthDirection = v
+            if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
+                NX.StatsPlus:OnSettingsChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_STATSPLUS_GROWTH_DIRECTION",
+            Settings.VarType.String,
+            "Growth Direction",
+            "DOWN",
+            GetValue,
+            SetValue
+        )
+
+        local init = Settings.CreateDropdown(category, setting, GetGrowthDirectionOptionsData, "Choose whether text expands upward or downward from the anchor.")
+        init.reinitializeOnValueChanged = true
+    end
+
+    do
+        local function GetValue()
+            return tonumber(NX.DB.statsPlus and NX.DB.statsPlus.fontSize) or 14
+        end
+
+        local function SetValue(v)
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
+            v = math.floor((tonumber(v) or 14) + 0.5)
+            if v < 0 then v = 0 end
+            if v > 100 then v = 100 end
+            NX.DB.statsPlus.fontSize = v
+            if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
+                NX.StatsPlus:OnSettingsChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_STATSPLUS_FONTSIZE",
+            Settings.VarType.Number,
+            "Font Size",
+            14,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(0, 100, 2)
+        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
+        Settings.CreateSlider(category, setting, options, "Controls Stats+ font size.")
+    end
+
+    do
+        local function GetValue()
+            return not not (NX.DB.statsPlus and NX.DB.statsPlus.positionUnlocked)
+        end
+
+        local function SetValue(v)
+            if NX.StatsPlus and NX.StatsPlus.SetPositionUnlocked then
+                NX.StatsPlus:SetPositionUnlocked(v, true)
+            else
+                NX.DB.statsPlus = NX.DB.statsPlus or {}
+                NX.DB.statsPlus.positionUnlocked = not not v
+                if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
+                    NX.StatsPlus:OnSettingsChanged()
+                end
+            end
+        end
+
+        CreateToggleActionButton(category, "Show Anchor", function()
+            SetValue(not GetValue())
+        end)
+    end
+
+    AddSectionHeader(category, "Stats")
+
+    do
+        local function CreateStatToggle(key, label)
+            local function GetValue()
+                return not not (NX.DB.statsPlus and NX.DB.statsPlus[key])
+            end
+
+            local function SetValue(v)
+                NX.DB.statsPlus = NX.DB.statsPlus or {}
+                NX.DB.statsPlus[key] = not not v
+                if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
+                    NX.StatsPlus:OnSettingsChanged()
+                end
+            end
+
+            local setting = Settings.RegisterProxySetting(
+                category,
+                "NEXUS_STATSPLUS_" .. string.upper(key),
+                Settings.VarType.Boolean,
+                label,
+                true,
+                GetValue,
+                SetValue
+            )
+
+            CreateBooleanCheckboxControl(category, setting, "Show or hide this stat line.")
+        end
+
+        CreateStatToggle("showPrimaryStat", "Primary Stat")
+        CreateStatToggle("showHaste", "Haste")
+        CreateStatToggle("showMastery", "Mastery")
+        CreateStatToggle("showCriticalStrike", "Critical Strike")
+        CreateStatToggle("showVersatility", "Versatility")
+    end
+
+    AddSectionHeader(category, "Tank Stats")
+
+    do
+        local function CreateTankStatToggle(key, label)
+            local function GetValue()
+                return not not (NX.DB.statsPlus and NX.DB.statsPlus[key])
+            end
+
+            local function SetValue(v)
+                NX.DB.statsPlus = NX.DB.statsPlus or {}
+                NX.DB.statsPlus[key] = not not v
+                if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
+                    NX.StatsPlus:OnSettingsChanged()
+                end
+            end
+
+            local setting = Settings.RegisterProxySetting(
+                category,
+                "NEXUS_STATSPLUS_" .. string.upper(key),
+                Settings.VarType.Boolean,
+                label,
+                true,
+                GetValue,
+                SetValue
+            )
+
+            CreateBooleanCheckboxControl(category, setting, "Show or hide this tank stat line.")
+        end
+
+        CreateTankStatToggle("showArmor", "Armor")
+        CreateTankStatToggle("showMeleeAvoidance", "Melee Avoidance")
+    end
+end
+
 local function BuildWaypointTrackingControls(category)
     do
         local function GetValue()
@@ -2124,6 +2702,114 @@ local function BuildWaypointTrackingControls(category)
             "Keeps super-tracked map pins visible at any distance when in-game navigation is enabled."
         )
     end
+
+    do
+        local function GetValue()
+            return not not (NX.DB.waypointTracking and NX.DB.waypointTracking.highlightedQuestMarker)
+        end
+
+        local function SetValue(v)
+            NX.DB.waypointTracking = NX.DB.waypointTracking or {}
+            NX.DB.waypointTracking.highlightedQuestMarker = not not v
+            if NX.WaypointTracking and NX.WaypointTracking.OnSettingsChanged then
+                NX.WaypointTracking:OnSettingsChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_HIGHLIGHTED_QUEST_MARKER",
+            Settings.VarType.Boolean,
+            "Highlighted Quest Marker",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateEnabledDisabledDropdown(
+            category,
+            setting,
+            "Shows a highlight ring around the super-tracked quest marker while it is visible."
+        )
+    end
+end
+
+local function BuildCleanNamesInInstancesControls(category)
+    local function EnsureDB()
+        NX.DB.cleanNamesInInstances = NX.DB.cleanNamesInInstances or {}
+        local db = NX.DB.cleanNamesInInstances
+        if db.enabled == nil then
+            db.enabled = false
+        end
+        if db.unitNameNPC == nil then
+            if C_CVar and C_CVar.GetCVar then
+                local ok, value = pcall(C_CVar.GetCVar, "UnitNameNPC")
+                if ok then
+                    db.unitNameNPC = (value == "1" or value == true)
+                end
+            end
+            if db.unitNameNPC == nil then
+                db.unitNameNPC = true
+            end
+        end
+        return db
+    end
+
+    local function NotifyChanged()
+        if NX.CleanNamesInInstances and NX.CleanNamesInInstances.OnSettingsChanged then
+            NX.CleanNamesInInstances:OnSettingsChanged()
+        end
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.enabled == true
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.enabled = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_CLEAN_NAMES_ENABLED",
+            Settings.VarType.Boolean,
+            "Clean Names in Instances",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateEnabledDisabledDropdown(category, setting, "Applies default name cleanup CVars in instances and restores them outside instances.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.unitNameNPC == true
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.unitNameNPC = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_CLEAN_NAMES_UNITNAMENPC",
+            Settings.VarType.Boolean,
+            "Show NPC Names",
+            true,
+            GetValue,
+            SetValue
+        )
+
+        CreateEnabledDisabledDropdown(category, setting, "Keeps UnitNameNPC synchronized with client/server updates and addon changes.")
+    end
 end
 
 S._registered = S._registered or false
@@ -2175,6 +2861,30 @@ function S:Register()
     AddSectionHeader(pveCategory, "Mythic+")
     BuildMythicPlusControls(pveCategory)
 
+    local professionsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Professions")
+    self.professionsCategoryID = professionsCategory:GetID()
+
+    AddSectionHeader(professionsCategory, "Simple First Craft Bonus")
+    BuildSimpleFirstCraftBonusControls(professionsCategory)
+
+    local clickableBuffsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Clickable Buffs")
+    self.clickableBuffsCategoryID = clickableBuffsCategory:GetID()
+
+    AddSectionHeader(clickableBuffsCategory, "Clickable Buffs")
+    BuildClickableBuffsControls(clickableBuffsCategory)
+
+    local statsPlusCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Stats+")
+    self.statsPlusCategoryID = statsPlusCategory:GetID()
+
+    AddSectionHeader(statsPlusCategory, "Category")
+    BuildStatsPlusControls(statsPlusCategory)
+
+    local portalsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Portals")
+    self.portalsCategoryID = portalsCategory:GetID()
+
+    AddSectionHeader(portalsCategory, "Portals")
+    BuildPortalsControls(portalsCategory)
+
     local interfaceCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Interface")
     self.interfaceCategoryID = interfaceCategory:GetID()
 
@@ -2196,6 +2906,8 @@ function S:Register()
     BuildQuestTrackerStateControls(interfaceCategory)
     AddSectionHeader(interfaceCategory, "Waypoint Tracking")
     BuildWaypointTrackingControls(interfaceCategory)
+    AddSectionHeader(interfaceCategory, "Clean Names in Instances")
+    BuildCleanNamesInInstancesControls(interfaceCategory)
 
     local systemCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "System")
     self.systemCategoryID = systemCategory:GetID()
@@ -2223,6 +2935,12 @@ function S:Open()
             end
             if NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.OnSettingsClosed then
                 NX.Common.LowDurability:OnSettingsClosed()
+            end
+            if NX.ClickableBuffs and NX.ClickableBuffs.OnSettingsClosed then
+                NX.ClickableBuffs:OnSettingsClosed()
+            end
+            if NX.StatsPlus and NX.StatsPlus.OnSettingsClosed then
+                NX.StatsPlus:OnSettingsClosed()
             end
         end)
     end
