@@ -1,4 +1,4 @@
-local NX = Nexus
+﻿local NX = Nexus
 NX.Portals = NX.Portals or {}
 local P = NX.Portals
 local FN = NX.Functions
@@ -92,12 +92,6 @@ P.List = {
     { spellID = 1226482, spellName = "Path of the Full House", text = "LOU" },
     { spellID = 1239155, spellName = "Path of the All-Devouring", text = "MFO" },
 }
-
-local function Clamp(v, lo, hi)
-    if v < lo then return lo end
-    if v > hi then return hi end
-    return v
-end
 
 local function EnsureChallengesLoaded()
     local isLoaded
@@ -235,8 +229,8 @@ local function IsSafeToRenderPortals()
 end
 
 function P:EnsureDB()
-    NX.DB.portals = NX.DB.portals or {}
-    local db = NX.DB.portals
+    NX.DB.portals.portals = NX.DB.portals.portals or {}
+    local db = NX.DB.portals.portals
 
     if db.enabled == nil then db.enabled = true end
     if db.showLegacyPortals == nil then db.showLegacyPortals = true end
@@ -251,7 +245,7 @@ end
 
 function P:IsEnabled()
     self:EnsureDB()
-    return NX.DB.portals.enabled ~= false
+    return NX.DB.portals.portals.enabled ~= false
 end
 
 function P:HideAll()
@@ -266,20 +260,20 @@ end
 
 function P:GetConfig()
     self:EnsureDB()
-    local db = NX.DB.portals
+    local db = NX.DB.portals.portals
 
     local cfg = {}
-    cfg.anchorX = Clamp(math.floor((tonumber(db.anchorX) or 0) + 0.5), -500, 500)
-    cfg.anchorY = Clamp(math.floor((tonumber(db.anchorY) or -35) + 0.5), -500, 500)
+    cfg.anchorX = FN:ClampNumber(math.floor((tonumber(db.anchorX) or 0) + 0.5), -500, 500)
+    cfg.anchorY = FN:ClampNumber(math.floor((tonumber(db.anchorY) or -35) + 0.5), -500, 500)
     cfg.showLegacyPortals = (db.showLegacyPortals ~= false)
-    cfg.topRowMax = Clamp(math.floor((tonumber(db.topRowMax) or 8) + 0.5), 6, 8)
-    cfg.topRowHeightPct = Clamp(math.floor((tonumber(db.topRowHeightPct) or 80) + 0.5), 1, 100)
-    cfg.perRow = Clamp(math.floor((tonumber(db.perRow) or 12) + 0.5), 8, 12)
-    cfg.smallRowHeightPct = Clamp(math.floor((tonumber(db.smallRowHeightPct) or 80) + 0.5), 1, 100)
+    cfg.topRowMax = FN:ClampNumber(math.floor((tonumber(db.topRowMax) or 8) + 0.5), 6, 8)
+    cfg.topRowHeightPct = FN:ClampNumber(math.floor((tonumber(db.topRowHeightPct) or 80) + 0.5), 1, 100)
+    cfg.perRow = FN:ClampNumber(math.floor((tonumber(db.perRow) or 12) + 0.5), 8, 12)
+    cfg.smallRowHeightPct = FN:ClampNumber(math.floor((tonumber(db.smallRowHeightPct) or 80) + 0.5), 1, 100)
 
     local spacing = tonumber(db.spacing) or 2
     spacing = math.floor((spacing * 10) + 0.5) / 10
-    cfg.spacing = Clamp(spacing, 0, 5)
+    cfg.spacing = FN:ClampNumber(spacing, 0, 5)
 
     return cfg
 end
@@ -673,3 +667,6 @@ function P:OnEvent(event, ...)
         return
     end
 end
+
+
+

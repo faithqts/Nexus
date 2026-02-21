@@ -1,4 +1,4 @@
-Nexus = Nexus or {}
+﻿Nexus = Nexus or {}
 local NX = Nexus
 
 NX.Constants = NX.Constants or {}
@@ -11,230 +11,354 @@ NX.modules = NX.modules or {}
 NexusDB = NexusDB or {}
 
 local defaults = {
-    autoInsertKeystone = false,
-
-    mythicPlus = {
-        respondToKeys = false,
-        keysResponderCooldownSeconds = 5,
-        autoHideObjectives = false,
-        objectiveTrackerRestoreDelaySeconds = 30,
+    common = {
+        options = {
+            quickReloadSlash = true,
+            quickCdmSlash = true,
+            quickEditModeSlash = true,
+            allowEscCloseCdmEditMode = false,
+        },
     },
 
-    tankMarker = 6,
-    healerMarker = 4,
-
-    markingStyle = "leader",
-
-    quickReloadSlash = true,
-    quickCdmSlash = true,
-    quickEditModeSlash = true,
-    allowEscCloseCdmEditMode = false,
-
-    moveSettingsPanel = false,
-
-    addonFontPath = "Fonts\\FRIZQT__.TTF",
-
-    greatVault = {
-        enabled  = true,
-        anchorX = 0,
-        anchorY = 0,
-        positionUnlocked = false,
-        fontSize = 48,
-        flashing = true,
+    settings = {
+        panel = {
+            moveSettingsPanel = false,
+        },
+        voicePack = {
+            actor = "xalatath",
+        },
     },
 
-    crosshair = {
-        show = false,
-        size = 18,
-        thickness = 2,
-        color = "#FFFFFF",
-        alpha = 1.0,
+    media = {
+        fonts = {
+            addonFontPath = "Fonts\\FRIZQT__.TTF",
+        },
     },
 
-    lowDurability = {
-        enabled   = false,
-        anchorX = 0,
-        anchorY = 0,
-        positionUnlocked = false,
-        fontSize  = 48,
-        threshold = 20,
-        flashing  = true,
-        color     = "#FFFF00",
+    dungeonsRaids = {
+        mythicPlus = {
+            respondToKeys = false,
+            keysResponderCooldownSeconds = 5,
+            autoHideObjectives = false,
+            objectiveTrackerRestoreDelaySeconds = 30,
+        },
+        keyHelpers = {
+            autoInsertKeystone = false,
+            tankMarker = 6,
+            healerMarker = 4,
+            markingStyle = "leader",
+        },
+        greatVault = {
+            enabled = false,
+            anchorX = 0,
+            anchorY = 0,
+            positionUnlocked = false,
+            fontSize = 48,
+            flashing = true,
+        },
     },
 
-    motionSickness = {
-        enabled = false,
+    automation = {
+        achievementScreenshot = {
+            enabled = false,
+            delaySeconds = 1.5,
+        },
+        autoCombatLog = {
+            enabled = false,
+            stopDelaySeconds = 30,
+        },
+        cinematics = {
+            autoSkip = false,
+            quickSkip = false,
+        },
     },
 
-    skyridingEffects = {
-        enabled = false,
+    combat = {
+        crosshair = {
+            show = false,
+            size = 18,
+            thickness = 2,
+            color = "#FFFFFF",
+            alpha = 1.0,
+        },
+        actionGCDStreamer = {
+            enabled = false,
+            duration = 7.5,
+            limit = 7,
+            iconSize = 30,
+            iconZoomPct = 10,
+            spacing = 1,
+            growthDirection = "LEFT",
+            tooltipOnMouseover = false,
+            showLastCastMS = false,
+            showLastCastMSFontSize = 12,
+            anchorX = 0,
+            anchorY = 0,
+            positionUnlocked = false,
+            blacklist = { 75 },
+        },
+        floatingCombatText = {
+            hideOverPlayer = false,
+            hideOverPet = false,
+            showCombatDamage = false,
+            showCombatHealing = false,
+            showHealingAbsorbSelf = false,
+            showHealingAbsorbTarget = false,
+            showCombatState = false,
+            showComboPoints = false,
+            showDamageReduction = false,
+            showDodgeParryMiss = false,
+            showEnergyGains = false,
+            showFloatMode = false,
+            showFriendlyHealers = false,
+            showHonorGains = false,
+            showLowManaHealth = false,
+            showPeriodicEnergyGains = false,
+            showPetMeleeDamage = false,
+            showPetSpellDamage = false,
+        },
+        assistedRotationOverlay = {
+            enabled = false,
+        },
+        extraActionArtwork = {
+            enabled = false,
+        },
     },
 
-    achievementScreenshot = {
-        enabled = false,
-        delaySeconds = 1.5,
+    interface = {
+        lowDurability = {
+            enabled = false,
+            anchorX = 0,
+            anchorY = 0,
+            positionUnlocked = false,
+            fontSize = 48,
+            threshold = 20,
+            flashing = true,
+            color = "#FFFF00",
+        },
+        motionSickness = {
+            enabled = false,
+        },
+        skyridingEffects = {
+            enabled = false,
+        },
+        alwaysSharpen = {
+            enabled = false,
+        },
+        enhancedErrorText = {
+            enabled = false,
+            fontSize = 22,
+            width = 800,
+            height = 120,
+            offsetY = 0,
+            outline = true,
+        },
+        cleanObjectiveTracker = {
+            enabled = false,
+            hideBackground = true,
+            hideTitle = true,
+        },
+        waypointTracking = {
+            autoTrackMapPins = true,
+            unlimitedMapPinDistance = false,
+            highlightedQuestMarker = false,
+        },
+        minimap = {
+            zoomoutEnabled = false,
+            zoomoutDelaySeconds = 3,
+            zoomoutTargetZoom = 0,
+        },
+        clickableBuffs = {
+            enabled = false,
+            anchorX = 0,
+            anchorY = 0,
+            iconSize = 48,
+            textSize = 18,
+            iconZoomPct = 15,
+            flashMissing = false,
+        },
     },
 
-    autoCombatLog = {
-        enabled = false,
-        stopDelaySeconds = 30,
+    system = {
+        autoPlaceSpells = {
+            enabled = false,
+        },
+        hideTalkingHead = {
+            enabled = false,
+        },
+        luaErrors = {
+            enabled = false,
+        },
+        tutorials = {
+            disabled = false,
+        },
+        hideScreenshotStatus = {
+            enabled = false,
+        },
+        deleteDialog = {
+            enabled = false,
+        },
+        autoConfirmDialogs = {
+            enabled = false,
+            replaceEnchant = true,
+            acceptSockets = true,
+        },
+        autoDismount = {
+            enabled = false,
+            flying = false,
+        },
+        questTrackerState = {
+            enabled = false,
+            collapsed = nil,
+        },
+        auctionHouse = {
+            currentExpansionOnly = false,
+        },
+        cleanNamesInInstances = {
+            enabled = false,
+            inInstanceShowGuild = false,
+            inInstanceShowTitle = false,
+            inInstanceSize = 12,
+            inInstanceMinAlpha = 1.0,
+        },
+        currencies = {
+            enabled = false,
+            selfPoint = "TOPLEFT",
+            characterFramePoint = "TOPRIGHT",
+            x = 0,
+            y = 0,
+            scale = 1.0,
+            fontSize = 12,
+            showBackground = false,
+            list = {
+                { id = 3378, text = "Catalyst Charges" },
+                { id = 3383, text = "Adventurer Dawncrest" },
+                { id = 3341, text = "Veteran Dawncrest" },
+                { id = 3343, text = "Champion Dawncrest" },
+                { id = 3345, text = "Hero Dawncrest" },
+                { id = 3347, text = "Myth Dawncrest" },
+                { id = 3316, text = "Voidlight Marl" },
+            },
+        },
     },
 
-    alwaysSharpen = {
-        enabled = false,
+    professions = {
+        simpleFirstCraftBonus = {
+            enabled = true,
+        },
+        easyDisenchant = {
+            enabled = false,
+            preferElvUI = true,
+            anchorSide = "LEFT",
+            xOffset = 0,
+            yOffset = -50,
+            outsidePadding = 6,
+            size = 38,
+            iconZoom = 0.10,
+            alpha = 1,
+            frameStrata = "DIALOG",
+            spellID = 13262,
+            enchantingSkillLineID = 333,
+            enchantingNameSpellID = 7411,
+            border = {
+                enabled = true,
+                size = 1,
+                offset = 1,
+                color = { 0, 0, 0, 1 },
+            },
+        },
+        personalCraftingOrders = {
+            textAlertEnabled = false,
+            newOrderAlertEnabled = false,
+            soundAlertEnabled = false,
+            voicePack = "cortana",
+        },
     },
 
-    enhancedErrorText = {
-        enabled = false,
-        fontSize = 22,
-        width = 800,
-        height = 120,
-        offsetY = 0,
-        outline = true,
+    equipment = {
+        equipment = {
+            enabled = false,
+            flashText = false,
+            fontSize = 28,
+            align = "CENTER",
+            grow = "DOWN",
+            anchorX = 0,
+            anchorY = 180,
+            positionUnlocked = false,
+            blacklistCsv = "",
+            checkMissingGems = true,
+            checkSocketRequirements = true,
+            checkMissingEnchants = true,
+            considerEnchantId0Missing = true,
+        },
     },
 
-    cleanObjectiveTracker = {
-        enabled = false,
-        hideBackground = true,
-        hideTitle = true,
-    },
-
-    waypointTracking = {
-        autoTrackMapPins = true,
-        unlimitedMapPinDistance = false,
-        highlightedQuestMarker = false,
-    },
-
-    autoPlaceSpells = {
-        enabled = false,
-    },
-
-    floatingCombatText = {
-        hideOverPlayer = false,
-        hideOverPet = false,
-        showCombatDamage = false,
-        showCombatHealing = false,
-        showHealingAbsorbSelf = false,
-        showHealingAbsorbTarget = false,
-        showCombatState = false,
-        showComboPoints = false,
-        showDamageReduction = false,
-        showDodgeParryMiss = false,
-        showEnergyGains = false,
-        showFloatMode = false,
-        showFriendlyHealers = false,
-        showHonorGains = false,
-        showLowManaHealth = false,
-        showPeriodicEnergyGains = false,
-        showPetMeleeDamage = false,
-        showPetSpellDamage = false,
-    },
-
-    assistedRotationOverlay = {
-        enabled = false,
-    },
-
-    extraActionArtwork = {
-        enabled = false,
-    },
-
-    hideTalkingHead = {
-        enabled = false,
-    },
-
-    luaErrors = {
-        enabled = false,
-    },
-
-    tutorials = {
-        disabled = false,
-    },
-
-    hideScreenshotStatus = {
-        enabled = false,
-    },
-
-    deleteDialog = {
-        enabled = false,
-    },
-
-    autoConfirmDialogs = {
-        enabled = false,
-        replaceEnchant = true,
-        acceptSockets = true,
-    },
-
-    autoDismount = {
-        enabled = false,
-        flying = false,
-    },
-
-    cinematics = {
-        autoSkip = false,
-        quickSkip = false,
-    },
-
-    questTrackerState = {
-        enabled = false,
-        collapsed = nil,
-    },
-
-    auctionHouse = {
-        currentExpansionOnly = false,
-    },
-
-    simpleFirstCraftBonus = {
-        enabled = false,
-    },
-
-    clickableBuffs = {
-        enabled = false,
-        anchorX = 0,
-        anchorY = 0,
-        iconSize = 48,
-        textSize = 18,
-        iconZoomPct = 15,
-        flashMissing = false,
+    alerts = {
+        bankWarboundItems = {
+            enabled = false,
+            textSize = 48,
+            align = "CENTER",
+            flashText = false,
+            color = "#FFD133",
+            anchorX = 0,
+            anchorY = 300,
+            positionUnlocked = false,
+        },
+        alertEvents = {
+            enabled = false,
+            anchorX = 0,
+            anchorY = 200,
+            positionUnlocked = false,
+            textSize = 28,
+            align = "CENTER",
+            duration = 3,
+            grow = "UP",
+            events = {
+                FEAST = { enabled = true, flashing = false },
+                POTION_CAULDRON = { enabled = true, flashing = false },
+                FLASK_CAULDRON = { enabled = true, flashing = false },
+                JEEVES = { enabled = true, flashing = false },
+                MAILBOX = { enabled = true, flashing = false },
+                AUTO_HAMMER = { enabled = true, flashing = false },
+                SOULWELL = { enabled = true, flashing = false },
+                MAGE_TABLE = { enabled = true, flashing = false },
+            },
+            voicePack = "cortana",
+        },
     },
 
     statsPlus = {
-        enabled = false,
-        anchorX = 0,
-        anchorY = 0,
-        positionUnlocked = false,
-        style = "VERTICAL",
-        textAlignment = "LEFT",
-        textGrowthDirection = "DOWN",
-        fontSize = 14,
-        showPrimaryStat = true,
-        showHaste = true,
-        showMastery = true,
-        showCriticalStrike = true,
-        showVersatility = true,
-        showArmor = true,
-        showMeleeAvoidance = true,
-    },
-
-    cleanNamesInInstances = {
-        enabled = false,
-
-        inInstanceShowGuild = false,
-        inInstanceShowTitle = false,
-        inInstanceSize = 12,
-        inInstanceMinAlpha = 1.0,
+        statsPlus = {
+            enabled = false,
+            anchorX = 0,
+            anchorY = 0,
+            positionUnlocked = false,
+            style = "VERTICAL",
+            textAlignment = "LEFT",
+            textGrowthDirection = "DOWN",
+            fontSize = 14,
+            showPrimaryStat = true,
+            showHaste = true,
+            showMastery = true,
+            showCriticalStrike = true,
+            showVersatility = true,
+            showArmor = true,
+            showMeleeAvoidance = true,
+        },
     },
 
     portals = {
-        enabled = true,
-        anchorX = 0,
-        anchorY = -35,
-        topRowMax = 8,
-        topRowHeightPct = 80,
-        perRow = 12,
-        smallRowHeightPct = 80,
-        spacing = 2,
+        portals = {
+            enabled = false,
+            anchorX = 0,
+            anchorY = -35,
+            topRowMax = 8,
+            topRowHeightPct = 80,
+            perRow = 12,
+            smallRowHeightPct = 80,
+            spacing = 2,
+        },
     },
-
 }
 
 local function ApplyDefaults(dst, src)
@@ -317,84 +441,86 @@ end
 local function SeedCVarBackedDefaults(db)
     if not db or db._cvarSeeded then return end
 
-    db.luaErrors = db.luaErrors or {}
-    db.luaErrors.enabled = CV:GetBool("scriptErrors", db.luaErrors.enabled == true)
+    db.system = db.system or {}
+    db.system.luaErrors = db.system.luaErrors or {}
+    db.system.luaErrors.enabled = CV:GetBool("scriptErrors", db.system.luaErrors.enabled == true)
 
-    db.tutorials = db.tutorials or {}
-    local showTutorials = CV:GetBool("showTutorials", db.tutorials.disabled ~= true)
-    db.tutorials.disabled = not showTutorials
+    db.system.tutorials = db.system.tutorials or {}
+    local showTutorials = CV:GetBool("showTutorials", db.system.tutorials.disabled ~= true)
+    db.system.tutorials.disabled = not showTutorials
 
-    db.autoDismount = db.autoDismount or {}
-    db.autoDismount.enabled = CV:GetBool("autoDismount", db.autoDismount.enabled ~= false)
-    db.autoDismount.flying = CV:GetBool("autoDismountFlying", db.autoDismount.flying ~= false)
+    db.system.autoDismount = db.system.autoDismount or {}
+    db.system.autoDismount.enabled = CV:GetBool("autoDismount", db.system.autoDismount.enabled ~= false)
+    db.system.autoDismount.flying = CV:GetBool("autoDismountFlying", db.system.autoDismount.flying ~= false)
 
-    db.autoPlaceSpells = db.autoPlaceSpells or {}
-    db.autoPlaceSpells.enabled = CV:GetBool("AutoPushSpellToActionBar", db.autoPlaceSpells.enabled == true)
+    db.system.autoPlaceSpells = db.system.autoPlaceSpells or {}
+    db.system.autoPlaceSpells.enabled = CV:GetBool("AutoPushSpellToActionBar", db.system.autoPlaceSpells.enabled == true)
 
-    db.floatingCombatText = db.floatingCombatText or {}
-    db.floatingCombatText.showCombatDamage = CV:GetBool(
+    db.combat = db.combat or {}
+    db.combat.floatingCombatText = db.combat.floatingCombatText or {}
+    db.combat.floatingCombatText.showCombatDamage = CV:GetBool(
         "floatingCombatTextCombatDamage_v2",
-        db.floatingCombatText.showCombatDamage == true
+        db.combat.floatingCombatText.showCombatDamage == true
     )
-    db.floatingCombatText.showCombatHealing = CV:GetBool(
+    db.combat.floatingCombatText.showCombatHealing = CV:GetBool(
         "floatingCombatTextCombatHealing_v2",
-        db.floatingCombatText.showCombatHealing == true
+        db.combat.floatingCombatText.showCombatHealing == true
     )
-    db.floatingCombatText.showHealingAbsorbSelf = CV:GetBool(
+    db.combat.floatingCombatText.showHealingAbsorbSelf = CV:GetBool(
         "floatingCombatTextCombatHealingAbsorbSelf_v2",
-        db.floatingCombatText.showHealingAbsorbSelf == true
+        db.combat.floatingCombatText.showHealingAbsorbSelf == true
     )
-    db.floatingCombatText.showHealingAbsorbTarget = CV:GetBool(
+    db.combat.floatingCombatText.showHealingAbsorbTarget = CV:GetBool(
         "floatingCombatTextCombatHealingAbsorbTarget_v2",
-        db.floatingCombatText.showHealingAbsorbTarget == true
+        db.combat.floatingCombatText.showHealingAbsorbTarget == true
     )
-    db.floatingCombatText.showCombatState = CV:GetBool(
+    db.combat.floatingCombatText.showCombatState = CV:GetBool(
         "floatingCombatTextCombatState_v2",
-        db.floatingCombatText.showCombatState == true
+        db.combat.floatingCombatText.showCombatState == true
     )
-    db.floatingCombatText.showComboPoints = CV:GetBool(
+    db.combat.floatingCombatText.showComboPoints = CV:GetBool(
         "floatingCombatTextComboPoints_v2",
-        db.floatingCombatText.showComboPoints == true
+        db.combat.floatingCombatText.showComboPoints == true
     )
-    db.floatingCombatText.showDamageReduction = CV:GetBool(
+    db.combat.floatingCombatText.showDamageReduction = CV:GetBool(
         "floatingCombatTextDamageReduction_v2",
-        db.floatingCombatText.showDamageReduction == true
+        db.combat.floatingCombatText.showDamageReduction == true
     )
-    db.floatingCombatText.showDodgeParryMiss = CV:GetBool(
+    db.combat.floatingCombatText.showDodgeParryMiss = CV:GetBool(
         "floatingCombatTextDodgeParryMiss_v2",
-        db.floatingCombatText.showDodgeParryMiss == true
+        db.combat.floatingCombatText.showDodgeParryMiss == true
     )
-    db.floatingCombatText.showEnergyGains = CV:GetBool(
+    db.combat.floatingCombatText.showEnergyGains = CV:GetBool(
         "floatingCombatTextEnergyGains_v2",
-        db.floatingCombatText.showEnergyGains == true
+        db.combat.floatingCombatText.showEnergyGains == true
     )
-    db.floatingCombatText.showFloatMode = CV:GetBool(
+    db.combat.floatingCombatText.showFloatMode = CV:GetBool(
         "floatingCombatTextFloatMode_v2",
-        db.floatingCombatText.showFloatMode == true
+        db.combat.floatingCombatText.showFloatMode == true
     )
-    db.floatingCombatText.showFriendlyHealers = CV:GetBool(
+    db.combat.floatingCombatText.showFriendlyHealers = CV:GetBool(
         "floatingCombatTextFriendlyHealers_v2",
-        db.floatingCombatText.showFriendlyHealers == true
+        db.combat.floatingCombatText.showFriendlyHealers == true
     )
-    db.floatingCombatText.showHonorGains = CV:GetBool(
+    db.combat.floatingCombatText.showHonorGains = CV:GetBool(
         "floatingCombatTextHonorGains_v2",
-        db.floatingCombatText.showHonorGains == true
+        db.combat.floatingCombatText.showHonorGains == true
     )
-    db.floatingCombatText.showLowManaHealth = CV:GetBool(
+    db.combat.floatingCombatText.showLowManaHealth = CV:GetBool(
         "floatingCombatTextLowManaHealth_v2",
-        db.floatingCombatText.showLowManaHealth == true
+        db.combat.floatingCombatText.showLowManaHealth == true
     )
-    db.floatingCombatText.showPeriodicEnergyGains = CV:GetBool(
+    db.combat.floatingCombatText.showPeriodicEnergyGains = CV:GetBool(
         "floatingCombatTextPeriodicEnergyGains_v2",
-        db.floatingCombatText.showPeriodicEnergyGains == true
+        db.combat.floatingCombatText.showPeriodicEnergyGains == true
     )
-    db.floatingCombatText.showPetMeleeDamage = CV:GetBool(
+    db.combat.floatingCombatText.showPetMeleeDamage = CV:GetBool(
         "floatingCombatTextPetMeleeDamage_v2",
-        db.floatingCombatText.showPetMeleeDamage == true
+        db.combat.floatingCombatText.showPetMeleeDamage == true
     )
-    db.floatingCombatText.showPetSpellDamage = CV:GetBool(
+    db.combat.floatingCombatText.showPetSpellDamage = CV:GetBool(
         "floatingCombatTextPetSpellDamage_v2",
-        db.floatingCombatText.showPetSpellDamage == true
+        db.combat.floatingCombatText.showPetSpellDamage == true
     )
 
     db._cvarSeeded = true
@@ -410,8 +536,9 @@ local function MigrateLegacyGreatVault(db)
         return
     end
 
-    db.greatVault = db.greatVault or {}
-    local target = db.greatVault
+    db.dungeonsRaids = db.dungeonsRaids or {}
+    db.dungeonsRaids.greatVault = db.dungeonsRaids.greatVault or {}
+    local target = db.dungeonsRaids.greatVault
 
     if target.enabled == nil and legacy.enabled ~= nil then
         target.enabled = legacy.enabled and true or false
@@ -439,19 +566,22 @@ local function MigrateLegacyAddonFont(db)
         return
     end
 
-    if type(db.addonFontPath) == "string" and db.addonFontPath ~= "" then
+    db.media = db.media or {}
+    db.media.fonts = db.media.fonts or {}
+
+    if type(db.media.fonts.addonFontPath) == "string" and db.media.fonts.addonFontPath ~= "" then
         return
     end
 
     local candidates = {
-        db.greatVault and db.greatVault.fontPath,
-        db.lowDurability and db.lowDurability.fontPath,
+        db.dungeonsRaids and db.dungeonsRaids.greatVault and db.dungeonsRaids.greatVault.fontPath,
+        db.interface and db.interface.lowDurability and db.interface.lowDurability.fontPath,
         db.vault and db.vault.fontPath,
     }
 
     for _, path in ipairs(candidates) do
         if type(path) == "string" and path ~= "" then
-            db.addonFontPath = path
+            db.media.fonts.addonFontPath = path
             return
         end
     end
@@ -482,7 +612,7 @@ function C:UpdateSettingsPanelMovable()
     local panel = GetSettingsPanel()
     if not panel then return end
 
-    if NX.DB.moveSettingsPanel then
+    if NX.DB.settings.panel.moveSettingsPanel then
         panel:SetMovable(true)
         panel:EnableMouse(true)
         panel:RegisterForDrag("LeftButton")
@@ -594,6 +724,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.AutoCombatLog and NX.AutoCombatLog.Init then
             NX.AutoCombatLog:Init()
         end
+        if NX.ActionGCDStreamer and NX.ActionGCDStreamer.Init then
+            NX.ActionGCDStreamer:Init()
+        end
         if NX.AlwaysSharpen and NX.AlwaysSharpen.Init then
             NX.AlwaysSharpen:Init()
         end
@@ -605,9 +738,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.WaypointTracking and NX.WaypointTracking.Init then
             NX.WaypointTracking:Init()
-        end
-        if NX.CatalystCharges and NX.CatalystCharges.Init then
-            NX.CatalystCharges:Init()
         end
 
         if NX.AutoPlaceSpells and NX.AutoPlaceSpells.Init then
@@ -658,6 +788,18 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.SimpleFirstCraftBonus and NX.SimpleFirstCraftBonus.Init then
             NX.SimpleFirstCraftBonus:Init()
         end
+        if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.Init then
+            NX.PersonalCraftingOrders:Init()
+        end
+        if NX.EasyDisenchant and NX.EasyDisenchant.Init then
+            NX.EasyDisenchant:Init()
+        end
+        if NX.AlertEvents and NX.AlertEvents.Init then
+            NX.AlertEvents:Init()
+        end
+        if NX.Minimap and NX.Minimap.Init then
+            NX.Minimap:Init()
+        end
         if NX.ClickableBuffs and NX.ClickableBuffs.Init then
             NX.ClickableBuffs:Init()
         end
@@ -666,6 +808,15 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.CleanNamesInInstances and NX.CleanNamesInInstances.Init then
             NX.CleanNamesInInstances:Init()
+        end
+        if NX.Currencies and NX.Currencies.Init then
+            NX.Currencies:Init()
+        end
+        if NX.Equipment and NX.Equipment.Init then
+            NX.Equipment:Init()
+        end
+        if NX.BankWarboundItems and NX.BankWarboundItems.Init then
+            NX.BankWarboundItems:Init()
         end
 
         CallModule("OnEvent", event, ...)
@@ -733,10 +884,24 @@ SlashCmdList["NEXUS"] = function(msg)
         if cmd == "help" or cmd == "?" then
             print("|cffffd200Nexus:|r /nx opens Settings")
             print("|cffffd200Nexus:|r /nx buffs help")
+            print("|cffffd200Nexus:|r /nx gcd help")
+            print("|cffffd200Nexus:|r /nx alerts help")
+            print("|cffffd200Nexus:|r /nx minimap help")
+            print("|cffffd200Nexus:|r /nx porders help")
+            print("|cffffd200Nexus:|r /nx disenchant help")
+            print("|cffffd200Nexus:|r /nx equipment help")
+            print("|cffffd200Nexus:|r /nx warbank help")
+            print("|cffffd200Nexus:|r /nx currency help")
             print("|cffffd200Nexus:|r /nx stats help")
             print("|cffffd200Nexus:|r /nx vault help")
             print("|cffffd200Nexus:|r /nx durability help")
             return
+        end
+        if (cmd == "gcd" or cmd == "gcdstreamer") and NX.ActionGCDStreamer and NX.ActionGCDStreamer.HandleNxSlash then
+            local handled = NX.ActionGCDStreamer:HandleNxSlash(rest)
+            if handled then
+                return
+            end
         end
         if cmd == "durability" and NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.HandleNxSlash then
             local handled = NX.Common.LowDurability:HandleNxSlash(rest)
@@ -756,8 +921,54 @@ SlashCmdList["NEXUS"] = function(msg)
                 return
             end
         end
+        if (cmd == "porders" or cmd == "personalorders") and NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.HandleNxSlash then
+            local handled = NX.PersonalCraftingOrders:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if cmd == "disenchant" and NX.EasyDisenchant and NX.EasyDisenchant.HandleNxSlash then
+            local handled = NX.EasyDisenchant:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if (cmd == "currency" or cmd == "currencies") and NX.Currencies and NX.Currencies.HandleNxSlash then
+            local handled = NX.Currencies:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
         if cmd == "stats" and NX.StatsPlus and NX.StatsPlus.HandleNxSlash then
             local handled = NX.StatsPlus:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if cmd == "alerts" and NX.AlertEvents and NX.AlertEvents.HandleNxSlash then
+            local handled = NX.AlertEvents:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if (cmd == "cnames" or cmd == "cleanname" or cmd == "cleannames") and NX.CleanNamesInInstances and NX.CleanNamesInInstances.Toggle then
+            NX.CleanNamesInInstances:Toggle()
+            return
+        end
+        if cmd == "minimap" and NX.Minimap and NX.Minimap.HandleNxSlash then
+            local handled = NX.Minimap:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if cmd == "equipment" and NX.Equipment and NX.Equipment.HandleNxSlash then
+            local handled = NX.Equipment:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if cmd == "warbank" and NX.BankWarboundItems and NX.BankWarboundItems.HandleNxSlash then
+            local handled = NX.BankWarboundItems:HandleNxSlash(rest)
             if handled then
                 return
             end
@@ -771,3 +982,5 @@ SlashCmdList["NEXUS"] = function(msg)
         Nexus.Settings:Open()
     end
 end
+
+
