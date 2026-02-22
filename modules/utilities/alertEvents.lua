@@ -50,10 +50,10 @@ for _, eventData in ipairs(EVENTS) do
     end
 end
 
-local frame
 local alertFrame
 local activeAlerts = {}
 local nextAlertId = 1
+local recentCastGuids = {}
 
 local DEFAULT_ANCHOR_X = 0
 local DEFAULT_ANCHOR_Y = 200
@@ -97,6 +97,14 @@ end
 local function Trim(value)
     local text = tostring(value or "")
     return string.match(text, "^%s*(.-)%s*$") or ""
+end
+
+local function ShouldProcessAlertCasts()
+    if FN and FN.PassesCommonNonCombatRules then
+        return FN:PassesCommonNonCombatRules()
+    end
+
+    return false
 end
 
 local function GetVoicePackSoundPaths(actor, eventKey)
@@ -512,20 +520,48 @@ function UA:ClearAlerts()
     self:RefreshAlertDisplay()
 end
 
-function UA:HandleCombatLogEvent()
+local function IsGroupUnitToken(unitToken)
+    if unitToken == "player" then
+        return true
+    end
+
+    if type(unitToken) ~= "string" then
+        return false
+    end
+
+    if string.match(unitToken, "^party%d+$") then
+        return true
+    end
+
+    if string.match(unitToken, "^raid%d+$") then
+        return true
+    end
+
+    return false
+end
+
+function UA:HandleUnitSpellcastSucceeded(unitToken, castGUID, spellID)
+    if not ShouldProcessAlertCasts() then
+        return
+    end
+
     local db = self:EnsureDB()
     if not db.enabled then
         return
     end
 
-    local _, subevent,
-        _,
-        _, _, _, _,
-        _, _, _, _,
-        spellID = CombatLogGetCurrentEventInfo()
-
-    if subevent ~= "SPELL_CAST_SUCCESS" then
+    if not IsGroupUnitToken(unitToken) then
         return
+    end
+
+    if castGUID and recentCastGuids[castGUID] then
+        return
+    end
+    if castGUID then
+        recentCastGuids[castGUID] = true
+        C_Timer.After(3, function()
+            recentCastGuids[castGUID] = nil
+        end)
     end
 
     local eventData = SPELL_ID_TO_EVENT[tonumber(spellID)]
@@ -537,6 +573,13 @@ function UA:HandleCombatLogEvent()
     end
 
     self:AddAlert(eventData.label, eventData.color, eventData.key)
+end
+
+function UA:OnEvent(event, ...)
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local unitToken, castGUID, spellID = ...
+        self:HandleUnitSpellcastSucceeded(unitToken, castGUID, spellID)
+    end
 end
 
 function UA:OnSettingsChanged()
@@ -685,17 +728,6 @@ function UA:Init()
     self:EnsureDB()
     self:EnsureFrame()
     self:RefreshAlertDisplay()
-
-    if not frame then
-        frame = CreateFrame("Frame")
-        frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-        frame:SetScript("OnEvent", function(_, event)
-            if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-                UA:HandleCombatLogEvent()
-            end
-        end)
-    end
-
 end
 
 

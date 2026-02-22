@@ -197,32 +197,16 @@ local function BuildEquivalentSuppressionMap(entries)
     return suppress
 end
 
-local function IsMythicChallengeActive()
-    if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive then
-        local ok, active = pcall(C_ChallengeMode.IsChallengeModeActive)
-        if ok and active then
-            return true
-        end
-    elseif IsChallengeModeActive then
-        local ok, active = pcall(IsChallengeModeActive)
-        if ok and active then
-            return true
-        end
+local function IsSafeToRenderPortals()
+    if FN and FN.PassesCommonNonCombatRules and not FN:PassesCommonNonCombatRules() then
+        return false
     end
 
-    return false
-end
-
-local function IsSafeToRenderPortals()
     if IsInInstance then
         local inInstance, instanceType = IsInInstance()
         if inInstance and instanceType == "raid" then
             return false
         end
-    end
-
-    if IsMythicChallengeActive() then
-        return false
     end
 
     return true
@@ -566,11 +550,6 @@ function P:UpdateCooldowns()
 end
 
 function P:UpdateAll()
-    if InCombatLockdown and InCombatLockdown() then
-        self.pendingRefresh = true
-        return
-    end
-
     if not IsSafeToRenderPortals() then
         self.pendingRefresh = true
         self:HideAll()
@@ -601,11 +580,6 @@ function P:StartTicker()
 
     local interval = 1 / math.max(1, UPDATE_HZ)
     self.Ticker = C_Timer.NewTicker(interval, function()
-        if InCombatLockdown and InCombatLockdown() then
-            self.pendingRefresh = true
-            self:UpdateCooldowns()
-            return
-        end
         if not IsSafeToRenderPortals() then
             self.pendingRefresh = true
             self:HideAll()

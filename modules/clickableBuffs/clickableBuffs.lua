@@ -84,24 +84,6 @@ CB.tracked_spells_items = {
     { itemID = 222503, spellName = "Refulgent Whetstone", text = "Oil", oil = true },
 }
 
-local function IsChallengeModeActiveCompat()
-    if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive then
-        local ok, active = pcall(C_ChallengeMode.IsChallengeModeActive)
-        if ok and active then
-            return true
-        end
-    end
-
-    if IsChallengeModeActive then
-        local ok, active = pcall(IsChallengeModeActive)
-        if ok and active then
-            return true
-        end
-    end
-
-    return false
-end
-
 local function HasPlayerAuraBySpellID(spellID)
     if not spellID then
         return false
@@ -278,19 +260,11 @@ local function GetActionMacroText(entry, resolvedSpellName)
 end
 
 local function IsSafeToShow()
-    if InCombatLockdown and InCombatLockdown() then
-        return false
+    if FN and FN.PassesCommonNonCombatRules then
+        return FN:PassesCommonNonCombatRules()
     end
 
-    if NX.Functions and NX.Functions.InRestrictiveEnvironment and NX.Functions:InRestrictiveEnvironment() then
-        return false
-    end
-
-    if IsChallengeModeActiveCompat() then
-        return false
-    end
-
-    return true
+    return not (InCombatLockdown and InCombatLockdown())
 end
 
 function CB:EnsureDB()

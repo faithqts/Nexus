@@ -5,7 +5,12 @@ local FN = NX.Functions
 FN.restricted = FN.restricted or {
     inRaidEncounter = false,
     inChallengeRun = false,
+    challengeInactiveSince = nil,
 }
+
+FN.CHALLENGE_SELF_HEAL_SECONDS = FN.CHALLENGE_SELF_HEAL_SECONDS or 300
+FN.CHALLENGE_SELF_HEAL_TICK_SECONDS = FN.CHALLENGE_SELF_HEAL_TICK_SECONDS or 15
+FN._challengeSelfHealTicker = FN._challengeSelfHealTicker or nil
 
 FN.DEFAULT_FONT_PATH = FN.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
 FN.DEFAULT_FONT_NAME = FN.DEFAULT_FONT_NAME or "FrizQT"
@@ -19,7 +24,101 @@ FN.VOICE_PACK_ACTORS = FN.VOICE_PACK_ACTORS or {
 }
 
 function FN:InRestrictiveEnvironment()
+    self:ReconcileChallengeRestrictionState()
     return self.restricted.inRaidEncounter or self.restricted.inChallengeRun
+end
+
+function FN:GetChallengeModeActiveNow()
+    if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive then
+        local ok, active = pcall(C_ChallengeMode.IsChallengeModeActive)
+        if ok then
+            return active and true or false
+        end
+    end
+
+    if IsChallengeModeActive then
+        local ok, active = pcall(IsChallengeModeActive)
+        if ok then
+            return active and true or false
+        end
+    end
+
+    return false
+end
+
+function FN:ReconcileChallengeRestrictionState()
+    if not self.restricted.inChallengeRun then
+        self.restricted.challengeInactiveSince = nil
+        return
+    end
+
+    if self:GetChallengeModeActiveNow() then
+        self.restricted.challengeInactiveSince = nil
+        return
+    end
+
+    local now = GetTime and GetTime() or 0
+    if not self.restricted.challengeInactiveSince then
+        self.restricted.challengeInactiveSince = now
+        return
+    end
+
+    if (now - self.restricted.challengeInactiveSince) >= self.CHALLENGE_SELF_HEAL_SECONDS then
+        self.restricted.inChallengeRun = false
+        self.restricted.challengeInactiveSince = nil
+    end
+end
+
+function FN:EnsureChallengeSelfHealTicker()
+    if self._challengeSelfHealTicker then
+        return
+    end
+
+    if not C_Timer or not C_Timer.NewTicker then
+        return
+    end
+
+    self._challengeSelfHealTicker = C_Timer.NewTicker(self.CHALLENGE_SELF_HEAL_TICK_SECONDS, function()
+        FN:ReconcileChallengeRestrictionState()
+    end)
+end
+
+function FN:IsMythicPlusChallengeActive()
+    if self:GetChallengeModeActiveNow() then
+        return true
+    end
+
+    return self.restricted.inChallengeRun == true
+end
+
+function FN:PassesCommonNonCombatRules()
+    self:ReconcileChallengeRestrictionState()
+
+    if InCombatLockdown and InCombatLockdown() then
+        return false
+    end
+
+    local playerInCombat = UnitAffectingCombat and UnitAffectingCombat("player")
+    if playerInCombat then
+        return false
+    end
+
+    if IsInInstance then
+        local inInstance, instanceType = IsInInstance()
+        if inInstance and instanceType == "raid" and playerInCombat then
+            return false
+        end
+    end
+
+    if self:InRestrictiveEnvironment() then
+        return false
+    end
+
+    if self:IsMythicPlusChallengeActive() then
+        return false
+    end
+
+    return true
 end
 
 function FN:ClampNumber(value, minValue, maxValue)
@@ -56,6 +155,8 @@ function FN:HandleRestrictionEvent(event, ...)
 
     if event == "CHALLENGE_MODE_START" then
         self.restricted.inChallengeRun = true
+        self.restricted.challengeInactiveSince = nil
+        self:EnsureChallengeSelfHealTicker()
         if NX.MythicPlus and NX.MythicPlus.StopWatcher then
             NX.MythicPlus:StopWatcher()
         end
@@ -64,6 +165,7 @@ function FN:HandleRestrictionEvent(event, ...)
 
     if event == "CHALLENGE_MODE_COMPLETED" or event == "CHALLENGE_MODE_RESET" then
         self.restricted.inChallengeRun = false
+        self.restricted.challengeInactiveSince = nil
         return
     end
 end

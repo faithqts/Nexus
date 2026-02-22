@@ -16,13 +16,13 @@ local defaults = {
             quickReloadSlash = true,
             quickCdmSlash = true,
             quickEditModeSlash = true,
-            allowEscCloseCdmEditMode = false,
+            allowEscCloseCdmEditMode = true,
         },
     },
 
     settings = {
         panel = {
-            moveSettingsPanel = false,
+            moveSettingsPanel = true,
         },
         voicePack = {
             actor = "xalatath",
@@ -866,6 +866,7 @@ frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("CHAT_MSG_PARTY")
 frame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
 frame:RegisterEvent("SPELLS_CHANGED")
+frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 
 SLASH_NEXUS1 = "/nx"
 SLASH_NEXUS2 = "/nexus"
