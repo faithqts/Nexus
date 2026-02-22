@@ -113,6 +113,12 @@ function M:HandleNxSlash(msg)
         return true
     end
 
+    if (cmd == "resources" or cmd == "resourceicons" or cmd == "icons")
+        and NX.MinimapResourceIcons
+        and NX.MinimapResourceIcons.HandleNxSlash then
+        return NX.MinimapResourceIcons:HandleNxSlash(rest)
+    end
+
     if cmd == "delay" then
         local value = tonumber(rest)
         if not value then
@@ -138,6 +144,7 @@ function M:HandleNxSlash(msg)
     if cmd == "help" or cmd == "?" then
         print("|cffffd200Nexus:|r /nx minimap, /nx minimap on, /nx minimap off, /nx minimap test")
         print("|cffffd200Nexus:|r /nx minimap delay <1-30>, /nx minimap target <0-5>")
+        print("|cffffd200Nexus:|r /nx minimap resources [on|off|toggle|status]")
         return true
     end
 

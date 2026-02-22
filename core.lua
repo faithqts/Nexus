@@ -81,6 +81,22 @@ local defaults = {
             color = "#FFFFFF",
             alpha = 1.0,
         },
+        mouseCursor = {
+            enabled = false,
+            size = 32,
+            alpha = 1.0,
+            strata = "TOOLTIP",
+            color = "#FFFFFF",
+            hz = 120,
+            texture = "circle.tga",
+            animationsEnabled = false,
+            pulsing = false,
+            flashing = false,
+            rotating = false,
+            pulseSpeedHz = 2.2,
+            flashSpeedHz = 4.0,
+            rotateRps = 0.5,
+        },
         actionGCDStreamer = {
             enabled = false,
             duration = 7.5,
@@ -162,11 +178,13 @@ local defaults = {
             autoTrackMapPins = true,
             unlimitedMapPinDistance = false,
             highlightedQuestMarker = false,
+            highlightedQuestMarkerStyle = "default",
         },
         minimap = {
             zoomoutEnabled = false,
             zoomoutDelaySeconds = 3,
             zoomoutTargetZoom = 0,
+            enhancedResourceIconsEnabled = false,
         },
         clickableBuffs = {
             enabled = false,
@@ -276,21 +294,19 @@ local defaults = {
     },
 
     equipment = {
-        equipment = {
-            enabled = false,
-            flashText = false,
-            fontSize = 28,
-            align = "CENTER",
-            grow = "DOWN",
-            anchorX = 0,
-            anchorY = 180,
-            positionUnlocked = false,
-            blacklistCsv = "",
-            checkMissingGems = true,
-            checkSocketRequirements = true,
-            checkMissingEnchants = true,
-            considerEnchantId0Missing = true,
-        },
+        enabled = false,
+        flashText = false,
+        fontSize = 28,
+        align = "CENTER",
+        grow = "DOWN",
+        anchorX = 0,
+        anchorY = 180,
+        positionUnlocked = false,
+        blacklistCsv = "",
+        checkMissingGems = true,
+        checkSocketRequirements = true,
+        checkMissingEnchants = true,
+        considerEnchantId0Missing = true,
     },
 
     alerts = {
@@ -328,36 +344,32 @@ local defaults = {
     },
 
     statsPlus = {
-        statsPlus = {
-            enabled = false,
-            anchorX = 0,
-            anchorY = 0,
-            positionUnlocked = false,
-            style = "VERTICAL",
-            textAlignment = "LEFT",
-            textGrowthDirection = "DOWN",
-            fontSize = 14,
-            showPrimaryStat = true,
-            showHaste = true,
-            showMastery = true,
-            showCriticalStrike = true,
-            showVersatility = true,
-            showArmor = true,
-            showMeleeAvoidance = true,
-        },
+        enabled = false,
+        anchorX = 0,
+        anchorY = 0,
+        positionUnlocked = false,
+        style = "VERTICAL",
+        textAlignment = "LEFT",
+        textGrowthDirection = "DOWN",
+        fontSize = 14,
+        showPrimaryStat = true,
+        showHaste = true,
+        showMastery = true,
+        showCriticalStrike = true,
+        showVersatility = true,
+        showArmor = true,
+        showMeleeAvoidance = true,
     },
 
     portals = {
-        portals = {
-            enabled = false,
-            anchorX = 0,
-            anchorY = -35,
-            topRowMax = 8,
-            topRowHeightPct = 80,
-            perRow = 12,
-            smallRowHeightPct = 80,
-            spacing = 2,
-        },
+        enabled = false,
+        anchorX = 0,
+        anchorY = -35,
+        topRowMax = 8,
+        topRowHeightPct = 80,
+        perRow = 12,
+        smallRowHeightPct = 80,
+        spacing = 2,
     },
 }
 
@@ -724,6 +736,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.AutoCombatLog and NX.AutoCombatLog.Init then
             NX.AutoCombatLog:Init()
         end
+        if NX.MouseCursor and NX.MouseCursor.Init then
+            NX.MouseCursor:Init()
+        end
         if NX.ActionGCDStreamer and NX.ActionGCDStreamer.Init then
             NX.ActionGCDStreamer:Init()
         end
@@ -736,8 +751,14 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.CleanObjectiveTracker and NX.CleanObjectiveTracker.Init then
             NX.CleanObjectiveTracker:Init()
         end
-        if NX.WaypointTracking and NX.WaypointTracking.Init then
-            NX.WaypointTracking:Init()
+        if NX.WaypointAutoPinTracking and NX.WaypointAutoPinTracking.Init then
+            NX.WaypointAutoPinTracking:Init()
+        end
+        if NX.WaypointUnlimitedPinDistance and NX.WaypointUnlimitedPinDistance.Init then
+            NX.WaypointUnlimitedPinDistance:Init()
+        end
+        if NX.WaypointHighlightQuestMarker and NX.WaypointHighlightQuestMarker.Init then
+            NX.WaypointHighlightQuestMarker:Init()
         end
 
         if NX.AutoPlaceSpells and NX.AutoPlaceSpells.Init then
@@ -799,6 +820,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.Minimap and NX.Minimap.Init then
             NX.Minimap:Init()
+        end
+        if NX.MinimapResourceIcons and NX.MinimapResourceIcons.Init then
+            NX.MinimapResourceIcons:Init()
         end
         if NX.ClickableBuffs and NX.ClickableBuffs.Init then
             NX.ClickableBuffs:Init()
@@ -887,7 +911,9 @@ SlashCmdList["NEXUS"] = function(msg)
             print("|cffffd200Nexus:|r /nx buffs help")
             print("|cffffd200Nexus:|r /nx gcd help")
             print("|cffffd200Nexus:|r /nx alerts help")
+            print("|cffffd200Nexus:|r /nx mouse help")
             print("|cffffd200Nexus:|r /nx minimap help")
+            print("|cffffd200Nexus:|r /nx resourceicons help")
             print("|cffffd200Nexus:|r /nx porders help")
             print("|cffffd200Nexus:|r /nx disenchant help")
             print("|cffffd200Nexus:|r /nx equipment help")
@@ -952,12 +978,24 @@ SlashCmdList["NEXUS"] = function(msg)
                 return
             end
         end
+        if cmd == "mouse" and NX.MouseCursor and NX.MouseCursor.HandleNxSlash then
+            local handled = NX.MouseCursor:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
         if (cmd == "cnames" or cmd == "cleanname" or cmd == "cleannames") and NX.CleanNamesInInstances and NX.CleanNamesInInstances.Toggle then
             NX.CleanNamesInInstances:Toggle()
             return
         end
         if cmd == "minimap" and NX.Minimap and NX.Minimap.HandleNxSlash then
             local handled = NX.Minimap:HandleNxSlash(rest)
+            if handled then
+                return
+            end
+        end
+        if (cmd == "resourceicons" or cmd == "resources") and NX.MinimapResourceIcons and NX.MinimapResourceIcons.HandleNxSlash then
+            local handled = NX.MinimapResourceIcons:HandleNxSlash(rest)
             if handled then
                 return
             end

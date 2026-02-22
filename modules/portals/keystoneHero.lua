@@ -213,8 +213,8 @@ local function IsSafeToRenderPortals()
 end
 
 function P:EnsureDB()
-    NX.DB.portals.portals = NX.DB.portals.portals or {}
-    local db = NX.DB.portals.portals
+    NX.DB.portals = NX.DB.portals or {}
+    local db = NX.DB.portals
 
     if db.enabled == nil then db.enabled = true end
     if db.showLegacyPortals == nil then db.showLegacyPortals = true end
@@ -229,7 +229,7 @@ end
 
 function P:IsEnabled()
     self:EnsureDB()
-    return NX.DB.portals.portals.enabled ~= false
+    return NX.DB.portals.enabled ~= false
 end
 
 function P:HideAll()
@@ -244,7 +244,7 @@ end
 
 function P:GetConfig()
     self:EnsureDB()
-    local db = NX.DB.portals.portals
+    local db = NX.DB.portals
 
     local cfg = {}
     cfg.anchorX = FN:ClampNumber(math.floor((tonumber(db.anchorX) or 0) + 0.5), -500, 500)

@@ -20,6 +20,7 @@ modules/automation/achievementScreenshot.lua
 modules/automation/cinematics.lua
 modules/combat/autoCombatLog.lua
 modules/combat/crosshair.lua
+modules/combat/cursor.lua
 modules/combat/floatingCombatText.lua
 modules/combat/assistedRotationOverlay.lua
 modules/combat/extraActionArtwork.lua
@@ -36,7 +37,10 @@ modules/interface/lowDurability.lua
 modules/equipment/checkGearEnchants.lua
 modules/warbank/bankWarboundItems.lua
 modules/minimap/minimapZoomout.lua
-modules/minimap/waypointTracking.lua
+modules/minimap/enhancedResourceIcons.lua
+modules/minimap/waypointAutoPinTracking.lua
+modules/minimap/waypointUnlimitedPinDistance.lua
+modules/minimap/waypointHighlightQuestMarker.lua
 modules/portals/keystoneHero.lua
 modules/clickableBuffs/clickableBuffs.lua
 modules/statsPlus/statsPlus.lua

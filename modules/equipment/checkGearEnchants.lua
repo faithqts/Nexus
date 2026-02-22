@@ -112,8 +112,8 @@ local function NormalizeGrow(value)
 end
 
 function EQ:EnsureDB()
-    NX.DB.equipment.equipment = NX.DB.equipment.equipment or {}
-    local db = NX.DB.equipment.equipment
+    NX.DB.equipment = NX.DB.equipment or {}
+    local db = NX.DB.equipment
 
     if db.enabled == nil then db.enabled = DEFAULTS.enabled end
     if db.flashText == nil then db.flashText = DEFAULTS.flashText end

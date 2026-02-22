@@ -1165,6 +1165,397 @@ local function BuildCrosshairControls(category)
     end
 end
 
+local function BuildMouseCursorControls(category)
+    local function EnsureDB()
+        NX.DB.combat = NX.DB.combat or {}
+        NX.DB.combat.mouseCursor = NX.DB.combat.mouseCursor or {}
+        local db = NX.DB.combat.mouseCursor
+        if db.enabled == nil then db.enabled = false end
+        if db.size == nil then db.size = 32 end
+        if db.alpha == nil then db.alpha = 1.0 end
+        if db.color == nil then db.color = "#FFFFFF" end
+        if db.hz == nil then db.hz = 120 end
+        if db.texture == nil then db.texture = "circle.tga" end
+        if db.animationsEnabled == nil then db.animationsEnabled = false end
+        if db.pulsing == nil then db.pulsing = false end
+        if db.flashing == nil then db.flashing = false end
+        if db.rotating == nil then db.rotating = false end
+        if db.pulseSpeedHz == nil then db.pulseSpeedHz = 2.2 end
+        if db.flashSpeedHz == nil then db.flashSpeedHz = 4.0 end
+        if db.rotateRps == nil then db.rotateRps = 0.5 end
+        return db
+    end
+
+    local function NotifyChanged()
+        if NX.MouseCursor and NX.MouseCursor.OnSettingsChanged then
+            NX.MouseCursor:OnSettingsChanged()
+        end
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.enabled == true
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.enabled = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_ENABLED",
+            Settings.VarType.Boolean,
+            "Enabled",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateBooleanCheckboxControl(category, setting, "Enable or disable the custom mouse cursor.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.size) or 32
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            local n = tonumber(v) or 32
+            n = math.floor(n / 2 + 0.5) * 2
+            if n < 0 then n = 0 end
+            if n > 100 then n = 100 end
+            db.size = n
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_SIZE",
+            Settings.VarType.Number,
+            "Size",
+            32,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(0, 100, 2)
+        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
+        Settings.CreateSlider(category, setting, options, "Mouse cursor size in pixels.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            local a = tonumber(db.alpha)
+            if not a then return 1.0 end
+            return FN:ClampNumber(a, 0, 1)
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            local a = tonumber(v) or 1.0
+            db.alpha = FN:ClampNumber(a, 0, 1)
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_ALPHA",
+            Settings.VarType.Number,
+            "Alpha",
+            1.0,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(0, 1, 0.1)
+        ApplyRightLabel(options, function(v) return string.format("%.1f", v) end)
+        Settings.CreateSlider(category, setting, options, "Mouse cursor alpha from 0.0 to 1.0.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tostring(db.color or "#FFFFFF")
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            if type(v) ~= "string" or v == "" then
+                v = "#FFFFFF"
+            end
+            db.color = v
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_COLOR",
+            Settings.VarType.String,
+            "Color",
+            "#FFFFFF",
+            GetValue,
+            SetValue
+        )
+
+        CreateSharedFontColorDropdown(category, setting, "Selects the mouse cursor color. Supports #RRGGBB or #RRGGBBAA.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.hz) or 120
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            local n = tonumber(v) or 120
+            n = math.floor(n / 5 + 0.5) * 5
+            if n < 30 then n = 30 end
+            if n > 600 then n = 600 end
+            db.hz = n
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_HZ",
+            Settings.VarType.Number,
+            "Update Rate (Hz)",
+            120,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(30, 600, 5)
+        ApplyRightLabel(options, function(v) return string.format("%d Hz", v) end)
+        Settings.CreateSlider(category, setting, options, "Caps cursor updates per second.")
+    end
+
+    do
+        local function GetTextureOptionsData()
+            local c = Settings.CreateControlTextContainer()
+            c:Add("circle.tga", "circle.tga (Default)")
+            c:Add("spiked.tga", "spiked.tga")
+            return c:GetData()
+        end
+
+        local function GetValue()
+            local db = EnsureDB()
+            return tostring(db.texture or "circle.tga")
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            local value = string.lower(tostring(v or "circle.tga"))
+            if value ~= "circle.tga" and value ~= "spiked.tga" then
+                value = "circle.tga"
+            end
+            db.texture = value
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_TEXTURE",
+            Settings.VarType.String,
+            "Texture",
+            "circle.tga",
+            GetValue,
+            SetValue
+        )
+
+        local init = Settings.CreateDropdown(category, setting, GetTextureOptionsData, "Choose the mouse cursor texture.")
+        init.reinitializeOnValueChanged = true
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.animationsEnabled == true
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.animationsEnabled = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_ANIMATIONS_ENABLED",
+            Settings.VarType.Boolean,
+            "Animation Effects",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateBooleanCheckboxControl(category, setting, "Enables cursor animation effects.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.pulsing == true
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.pulsing = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_PULSING",
+            Settings.VarType.Boolean,
+            "Pulsing",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateBooleanCheckboxControl(category, setting, "Slightly scales the cursor up and down repeatedly.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.pulseSpeedHz) or 2.2
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.pulseSpeedHz = FN:ClampNumber(tonumber(v) or 2.2, 0.2, 8.0)
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_PULSE_SPEED_HZ",
+            Settings.VarType.Number,
+            "Pulse Speed",
+            2.2,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(0.2, 8.0, 0.1)
+        ApplyRightLabel(options, function(v) return string.format("%.1f Hz", v) end)
+        Settings.CreateSlider(category, setting, options, "Pulse animation frequency.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.flashing == true
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.flashing = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_FLASHING",
+            Settings.VarType.Boolean,
+            "Flashing",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateBooleanCheckboxControl(category, setting, "Animates cursor alpha repeatedly.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.flashSpeedHz) or 4.0
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.flashSpeedHz = FN:ClampNumber(tonumber(v) or 4.0, 0.2, 12.0)
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_FLASH_SPEED_HZ",
+            Settings.VarType.Number,
+            "Flash Speed",
+            4.0,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(0.2, 12.0, 0.1)
+        ApplyRightLabel(options, function(v) return string.format("%.1f Hz", v) end)
+        Settings.CreateSlider(category, setting, options, "Flash animation frequency.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.rotating == true
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.rotating = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_ROTATING",
+            Settings.VarType.Boolean,
+            "Rotating",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateBooleanCheckboxControl(category, setting, "Rotates the cursor continuously through 360 degrees.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.rotateRps) or 0.5
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.rotateRps = FN:ClampNumber(tonumber(v) or 0.5, 0.1, 5.0)
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MOUSE_CURSOR_ROTATE_RPS",
+            Settings.VarType.Number,
+            "Rotate Speed",
+            0.5,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(0.1, 5.0, 0.1)
+        ApplyRightLabel(options, function(v) return string.format("%.1f rps", v) end)
+        Settings.CreateSlider(category, setting, options, "Rotation speed in rotations per second.")
+    end
+end
+
 local function BuildMythicPlusControls(category)
     do
         local function GetValue()
@@ -1405,13 +1796,13 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            if NX.DB.portals.portals == nil then return true end
-            return NX.DB.portals.portals.enabled ~= false
+            if NX.DB.portals == nil then return true end
+            return NX.DB.portals.enabled ~= false
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
-            NX.DB.portals.portals.enabled = not not v
+            NX.DB.portals = NX.DB.portals or {}
+            NX.DB.portals.enabled = not not v
             Notify()
         end
 
@@ -1421,13 +1812,13 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            if NX.DB.portals.portals == nil then return true end
-            return NX.DB.portals.portals.showLegacyPortals ~= false
+            if NX.DB.portals == nil then return true end
+            return NX.DB.portals.showLegacyPortals ~= false
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
-            NX.DB.portals.portals.showLegacyPortals = not not v
+            NX.DB.portals = NX.DB.portals or {}
+            NX.DB.portals.showLegacyPortals = not not v
             Notify()
         end
 
@@ -1445,15 +1836,15 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            return tonumber(NX.DB.portals.portals and NX.DB.portals.portals.anchorX) or 0
+            return tonumber(NX.DB.portals and NX.DB.portals.anchorX) or 0
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
+            NX.DB.portals = NX.DB.portals or {}
             v = math.floor((tonumber(v) or 0) + 0.5)
             if v < -500 then v = -500 end
             if v > 500 then v = 500 end
-            NX.DB.portals.portals.anchorX = v
+            NX.DB.portals.anchorX = v
             Notify()
         end
 
@@ -1465,15 +1856,15 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            return tonumber(NX.DB.portals.portals and NX.DB.portals.portals.anchorY) or -35
+            return tonumber(NX.DB.portals and NX.DB.portals.anchorY) or -35
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
+            NX.DB.portals = NX.DB.portals or {}
             v = math.floor((tonumber(v) or -35) + 0.5)
             if v < -500 then v = -500 end
             if v > 500 then v = 500 end
-            NX.DB.portals.portals.anchorY = v
+            NX.DB.portals.anchorY = v
             Notify()
         end
 
@@ -1485,15 +1876,15 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            return tonumber(NX.DB.portals.portals and NX.DB.portals.portals.topRowMax) or 8
+            return tonumber(NX.DB.portals and NX.DB.portals.topRowMax) or 8
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
+            NX.DB.portals = NX.DB.portals or {}
             v = math.floor((tonumber(v) or 8) + 0.5)
             if v < 6 then v = 6 end
             if v > 8 then v = 8 end
-            NX.DB.portals.portals.topRowMax = v
+            NX.DB.portals.topRowMax = v
             Notify()
         end
 
@@ -1505,15 +1896,15 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            return tonumber(NX.DB.portals.portals and NX.DB.portals.portals.topRowHeightPct) or 80
+            return tonumber(NX.DB.portals and NX.DB.portals.topRowHeightPct) or 80
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
+            NX.DB.portals = NX.DB.portals or {}
             v = math.floor((tonumber(v) or 80) + 0.5)
             if v < 1 then v = 1 end
             if v > 100 then v = 100 end
-            NX.DB.portals.portals.topRowHeightPct = v
+            NX.DB.portals.topRowHeightPct = v
             Notify()
         end
 
@@ -1525,15 +1916,15 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            return tonumber(NX.DB.portals.portals and NX.DB.portals.portals.perRow) or 12
+            return tonumber(NX.DB.portals and NX.DB.portals.perRow) or 12
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
+            NX.DB.portals = NX.DB.portals or {}
             v = math.floor((tonumber(v) or 12) + 0.5)
             if v < 8 then v = 8 end
             if v > 12 then v = 12 end
-            NX.DB.portals.portals.perRow = v
+            NX.DB.portals.perRow = v
             Notify()
         end
 
@@ -1545,15 +1936,15 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            return tonumber(NX.DB.portals.portals and NX.DB.portals.portals.smallRowHeightPct) or 80
+            return tonumber(NX.DB.portals and NX.DB.portals.smallRowHeightPct) or 80
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
+            NX.DB.portals = NX.DB.portals or {}
             v = math.floor((tonumber(v) or 80) + 0.5)
             if v < 1 then v = 1 end
             if v > 100 then v = 100 end
-            NX.DB.portals.portals.smallRowHeightPct = v
+            NX.DB.portals.smallRowHeightPct = v
             Notify()
         end
 
@@ -1565,16 +1956,16 @@ local function BuildPortalsControls(category)
 
     do
         local function GetValue()
-            return tonumber(NX.DB.portals.portals and NX.DB.portals.portals.spacing) or 2
+            return tonumber(NX.DB.portals and NX.DB.portals.spacing) or 2
         end
 
         local function SetValue(v)
-            NX.DB.portals.portals = NX.DB.portals.portals or {}
+            NX.DB.portals = NX.DB.portals or {}
             v = tonumber(v) or 2
             v = math.floor((v * 5) + 0.5) / 5
             if v < 0 then v = 0 end
             if v > 5 then v = 5 end
-            NX.DB.portals.portals.spacing = v
+            NX.DB.portals.spacing = v
             Notify()
         end
 
@@ -3256,6 +3647,10 @@ local function BuildUtilityAlertsControls(category)
         local db = NX.DB.alerts.alertEvents
         db.events = db.events or {}
         db.voicePack = NormalizeVoicePackActor(db.voicePack or GetSharedVoicePackActor())
+        if db.soundEnabled == nil then
+            db.soundEnabled = true
+        end
+        db.soundEnabled = db.soundEnabled and true or false
 
         for _, row in ipairs(EVENT_ROWS) do
             db.events[row.key] = db.events[row.key] or {}
@@ -3304,6 +3699,31 @@ local function BuildUtilityAlertsControls(category)
         )
 
         CreateEnabledDisabledDropdown(category, setting, "Enable or disable Utility Alerts for feasts, cauldrons, mailbox, repairs, soulwell, and mage table.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.soundEnabled ~= false
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.soundEnabled = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_ALERT_EVENTS_SOUND_ENABLED",
+            Settings.VarType.Boolean,
+            "Sounds",
+            true,
+            GetValue,
+            SetValue
+        )
+
+        CreateEnabledDisabledDropdown(category, setting, "Enable or disable all Utility Alerts sounds.")
     end
 
     do
@@ -3545,6 +3965,7 @@ local function BuildUtilityAlertsControls(category)
 
             CreateEnabledDisabledDropdown(category, setting, "Enable or disable flashing text for the " .. row.label .. " alert.")
         end
+
     end
 
 end
@@ -3840,12 +4261,12 @@ end
 local function BuildStatsPlusControls(category)
     do
         local function GetValue()
-            return not not (NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus.enabled)
+            return not not (NX.DB.statsPlus and NX.DB.statsPlus.enabled)
         end
 
         local function SetValue(v)
-            NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
-            NX.DB.statsPlus.statsPlus.enabled = not not v
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
+            NX.DB.statsPlus.enabled = not not v
             if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
                 NX.StatsPlus:OnSettingsChanged()
             end
@@ -3873,7 +4294,7 @@ local function BuildStatsPlusControls(category)
         end
 
         local function GetValue()
-            local v = NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus.style
+            local v = NX.DB.statsPlus and NX.DB.statsPlus.style
             v = string.upper(tostring(v or "VERTICAL"))
             if v ~= "VERTICAL" and v ~= "HORIZONTAL" then
                 v = "VERTICAL"
@@ -3882,12 +4303,12 @@ local function BuildStatsPlusControls(category)
         end
 
         local function SetValue(v)
-            NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
             v = string.upper(tostring(v or "VERTICAL"))
             if v ~= "VERTICAL" and v ~= "HORIZONTAL" then
                 v = "VERTICAL"
             end
-            NX.DB.statsPlus.statsPlus.style = v
+            NX.DB.statsPlus.style = v
             if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
                 NX.StatsPlus:OnSettingsChanged()
             end
@@ -3917,7 +4338,7 @@ local function BuildStatsPlusControls(category)
         end
 
         local function GetValue()
-            local v = NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus.textAlignment
+            local v = NX.DB.statsPlus and NX.DB.statsPlus.textAlignment
             v = string.upper(tostring(v or "LEFT"))
             if v ~= "LEFT" and v ~= "CENTER" and v ~= "RIGHT" then
                 v = "LEFT"
@@ -3926,12 +4347,12 @@ local function BuildStatsPlusControls(category)
         end
 
         local function SetValue(v)
-            NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
             v = string.upper(tostring(v or "LEFT"))
             if v ~= "LEFT" and v ~= "CENTER" and v ~= "RIGHT" then
                 v = "LEFT"
             end
-            NX.DB.statsPlus.statsPlus.textAlignment = v
+            NX.DB.statsPlus.textAlignment = v
             if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
                 NX.StatsPlus:OnSettingsChanged()
             end
@@ -3960,7 +4381,7 @@ local function BuildStatsPlusControls(category)
         end
 
         local function GetValue()
-            local v = NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus.textGrowthDirection
+            local v = NX.DB.statsPlus and NX.DB.statsPlus.textGrowthDirection
             v = string.upper(tostring(v or "DOWN"))
             if v ~= "UP" and v ~= "DOWN" then
                 v = "DOWN"
@@ -3969,12 +4390,12 @@ local function BuildStatsPlusControls(category)
         end
 
         local function SetValue(v)
-            NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
             v = string.upper(tostring(v or "DOWN"))
             if v ~= "UP" and v ~= "DOWN" then
                 v = "DOWN"
             end
-            NX.DB.statsPlus.statsPlus.textGrowthDirection = v
+            NX.DB.statsPlus.textGrowthDirection = v
             if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
                 NX.StatsPlus:OnSettingsChanged()
             end
@@ -3996,15 +4417,15 @@ local function BuildStatsPlusControls(category)
 
     do
         local function GetValue()
-            return tonumber(NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus.fontSize) or 14
+            return tonumber(NX.DB.statsPlus and NX.DB.statsPlus.fontSize) or 14
         end
 
         local function SetValue(v)
-            NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
             v = math.floor((tonumber(v) or 14) + 0.5)
             if v < 0 then v = 0 end
             if v > 100 then v = 100 end
-            NX.DB.statsPlus.statsPlus.fontSize = v
+            NX.DB.statsPlus.fontSize = v
             if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
                 NX.StatsPlus:OnSettingsChanged()
             end
@@ -4027,15 +4448,15 @@ local function BuildStatsPlusControls(category)
 
     do
         local function GetValue()
-            return not not (NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus.positionUnlocked)
+            return not not (NX.DB.statsPlus and NX.DB.statsPlus.positionUnlocked)
         end
 
         local function SetValue(v)
             if NX.StatsPlus and NX.StatsPlus.SetPositionUnlocked then
                 NX.StatsPlus:SetPositionUnlocked(v, true)
             else
-                NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
-                NX.DB.statsPlus.statsPlus.positionUnlocked = not not v
+                NX.DB.statsPlus = NX.DB.statsPlus or {}
+                NX.DB.statsPlus.positionUnlocked = not not v
                 if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
                     NX.StatsPlus:OnSettingsChanged()
                 end
@@ -4052,12 +4473,12 @@ local function BuildStatsPlusControls(category)
     do
         local function CreateStatToggle(key, label)
             local function GetValue()
-                return not not (NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus[key])
+                return not not (NX.DB.statsPlus and NX.DB.statsPlus[key])
             end
 
             local function SetValue(v)
-                NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
-                NX.DB.statsPlus.statsPlus[key] = not not v
+                NX.DB.statsPlus = NX.DB.statsPlus or {}
+                NX.DB.statsPlus[key] = not not v
                 if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
                     NX.StatsPlus:OnSettingsChanged()
                 end
@@ -4088,12 +4509,12 @@ local function BuildStatsPlusControls(category)
     do
         local function CreateTankStatToggle(key, label)
             local function GetValue()
-                return not not (NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus[key])
+                return not not (NX.DB.statsPlus and NX.DB.statsPlus[key])
             end
 
             local function SetValue(v)
-                NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
-                NX.DB.statsPlus.statsPlus[key] = not not v
+                NX.DB.statsPlus = NX.DB.statsPlus or {}
+                NX.DB.statsPlus[key] = not not v
                 if NX.StatsPlus and NX.StatsPlus.OnSettingsChanged then
                     NX.StatsPlus:OnSettingsChanged()
                 end
@@ -4126,8 +4547,8 @@ local function BuildWaypointTrackingControls(category)
         local function SetValue(v)
             NX.DB.interface.waypointTracking = NX.DB.interface.waypointTracking or {}
             NX.DB.interface.waypointTracking.autoTrackMapPins = not not v
-            if NX.WaypointTracking and NX.WaypointTracking.OnSettingsChanged then
-                NX.WaypointTracking:OnSettingsChanged()
+            if NX.WaypointAutoPinTracking and NX.WaypointAutoPinTracking.OnSettingsChanged then
+                NX.WaypointAutoPinTracking:OnSettingsChanged()
             end
         end
 
@@ -4156,8 +4577,8 @@ local function BuildWaypointTrackingControls(category)
         local function SetValue(v)
             NX.DB.interface.waypointTracking = NX.DB.interface.waypointTracking or {}
             NX.DB.interface.waypointTracking.unlimitedMapPinDistance = not not v
-            if NX.WaypointTracking and NX.WaypointTracking.OnSettingsChanged then
-                NX.WaypointTracking:OnSettingsChanged()
+            if NX.WaypointUnlimitedPinDistance and NX.WaypointUnlimitedPinDistance.OnSettingsChanged then
+                NX.WaypointUnlimitedPinDistance:OnSettingsChanged()
             end
         end
 
@@ -4186,8 +4607,8 @@ local function BuildWaypointTrackingControls(category)
         local function SetValue(v)
             NX.DB.interface.waypointTracking = NX.DB.interface.waypointTracking or {}
             NX.DB.interface.waypointTracking.highlightedQuestMarker = not not v
-            if NX.WaypointTracking and NX.WaypointTracking.OnSettingsChanged then
-                NX.WaypointTracking:OnSettingsChanged()
+            if NX.WaypointHighlightQuestMarker and NX.WaypointHighlightQuestMarker.OnSettingsChanged then
+                NX.WaypointHighlightQuestMarker:OnSettingsChanged()
             end
         end
 
@@ -4206,6 +4627,59 @@ local function BuildWaypointTrackingControls(category)
             setting,
             "Shows a highlight ring around the super-tracked quest marker while it is visible."
         )
+    end
+
+    do
+        local function GetMarkerStyleOptionsData()
+            local c = Settings.CreateControlTextContainer()
+            c:Add("default", "Default Circle")
+            c:Add("huntersMark", "Hunter's Mark")
+            return c:GetData()
+        end
+
+        local function GetValue()
+            local db = NX.DB.interface.waypointTracking
+            local style = tostring((db and db.highlightedQuestMarkerStyle) or "default")
+            style = string.match(style, "^%s*(.-)%s*$") or "default"
+            style = string.lower(style)
+            if style ~= "default" and style ~= "huntersmark" then
+                return "default"
+            end
+            if style == "huntersmark" then
+                return "huntersMark"
+            end
+            return "default"
+        end
+
+        local function SetValue(v)
+            NX.DB.interface.waypointTracking = NX.DB.interface.waypointTracking or {}
+            local style = string.lower(tostring(v or "default"))
+            if style ~= "default" and style ~= "huntersmark" then
+                style = "default"
+            end
+            NX.DB.interface.waypointTracking.highlightedQuestMarkerStyle = (style == "huntersmark") and "huntersMark" or "default"
+            if NX.WaypointHighlightQuestMarker and NX.WaypointHighlightQuestMarker.OnSettingsChanged then
+                NX.WaypointHighlightQuestMarker:OnSettingsChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_HIGHLIGHTED_QUEST_MARKER_STYLE",
+            Settings.VarType.String,
+            "Highlighted Marker Style",
+            "default",
+            GetValue,
+            SetValue
+        )
+
+        local init = Settings.CreateDropdown(
+            category,
+            setting,
+            GetMarkerStyleOptionsData,
+            "Choose the icon style for highlighted waypoint marker. Hunter's Mark anchors above the waypoint pin."
+        )
+        init.reinitializeOnValueChanged = true
     end
 end
 
@@ -4298,8 +4772,8 @@ local function BuildMinimapControls(category)
     end
 
     local function NotifyChanged()
-        if NX.Minimap and NX.Minimap.OnSettingsChanged then
-            NX.Minimap:OnSettingsChanged()
+        if NX.MinimapResourceIcons and NX.MinimapResourceIcons.OnSettingsChanged then
+            NX.MinimapResourceIcons:OnSettingsChanged()
         end
     end
 
@@ -4392,10 +4866,54 @@ local function BuildMinimapControls(category)
 
 end
 
+local function BuildMinimapEnhancedResourceIconsControls(category)
+    local function EnsureDB()
+        NX.DB.interface.minimap = NX.DB.interface.minimap or {}
+        local db = NX.DB.interface.minimap
+        if db.enhancedResourceIconsEnabled == nil then db.enhancedResourceIconsEnabled = false end
+        return db
+    end
+
+    local function NotifyChanged()
+        if NX.MinimapResourceIcons and NX.MinimapResourceIcons.OnSettingsChanged then
+            NX.MinimapResourceIcons:OnSettingsChanged()
+        end
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.enhancedResourceIconsEnabled == true
+        end
+
+        local function SetValue(v)
+            if NX.MinimapResourceIcons and NX.MinimapResourceIcons.SetEnabled then
+                NX.MinimapResourceIcons:SetEnabled(v and true or false, true)
+            else
+                local db = EnsureDB()
+                db.enhancedResourceIconsEnabled = v and true or false
+                NotifyChanged()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MINIMAP_ENHANCED_RESOURCE_ICONS_ENABLED",
+            Settings.VarType.Boolean,
+            "Enhanced Resource Icons",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateBooleanCheckboxControl(category, setting, "Replaces minimap resource icons with a custom atlas texture.")
+    end
+end
+
 local function BuildEquipmentControls(category)
     local function EnsureDB()
-        NX.DB.equipment.equipment = NX.DB.equipment.equipment or {}
-        local db = NX.DB.equipment.equipment
+        NX.DB.equipment = NX.DB.equipment or {}
+        local db = NX.DB.equipment
         if db.enabled == nil then db.enabled = true end
         if db.flashText == nil then db.flashText = false end
         if db.fontSize == nil then db.fontSize = 28 end
@@ -4546,15 +5064,15 @@ local function BuildEquipmentControls(category)
 
     do
         local function GetValue()
-            return not not (NX.DB.equipment.equipment and NX.DB.equipment.equipment.positionUnlocked)
+            return not not (NX.DB.equipment and NX.DB.equipment.positionUnlocked)
         end
 
         local function SetValue(v)
             if NX.Equipment and NX.Equipment.SetPositionUnlocked then
                 NX.Equipment:SetPositionUnlocked(v, true)
             else
-                NX.DB.equipment.equipment = NX.DB.equipment.equipment or {}
-                NX.DB.equipment.equipment.positionUnlocked = not not v
+                NX.DB.equipment = NX.DB.equipment or {}
+                NX.DB.equipment.positionUnlocked = not not v
                 if NX.Equipment and NX.Equipment.OnSettingsChanged then
                     NX.Equipment:OnSettingsChanged()
                 end
@@ -4892,13 +5410,13 @@ local function BuildAnchorsControls(category)
     end)
 
     AddShowAnchorToggle("Equipment", function()
-        return not not (NX.DB.equipment.equipment and NX.DB.equipment.equipment.positionUnlocked)
+        return not not (NX.DB.equipment and NX.DB.equipment.positionUnlocked)
     end, function(v)
         if NX.Equipment and NX.Equipment.SetPositionUnlocked then
             NX.Equipment:SetPositionUnlocked(v, true)
         else
-            NX.DB.equipment.equipment = NX.DB.equipment.equipment or {}
-            NX.DB.equipment.equipment.positionUnlocked = not not v
+            NX.DB.equipment = NX.DB.equipment or {}
+            NX.DB.equipment.positionUnlocked = not not v
         end
     end)
 
@@ -4939,13 +5457,13 @@ local function BuildAnchorsControls(category)
     end)
 
     AddShowAnchorToggle("Stats+", function()
-        return not not (NX.DB.statsPlus.statsPlus and NX.DB.statsPlus.statsPlus.positionUnlocked)
+        return not not (NX.DB.statsPlus and NX.DB.statsPlus.positionUnlocked)
     end, function(v)
         if NX.StatsPlus and NX.StatsPlus.SetPositionUnlocked then
             NX.StatsPlus:SetPositionUnlocked(v, true)
         else
-            NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
-            NX.DB.statsPlus.statsPlus.positionUnlocked = not not v
+            NX.DB.statsPlus = NX.DB.statsPlus or {}
+            NX.DB.statsPlus.positionUnlocked = not not v
         end
     end)
 end
@@ -4978,14 +5496,14 @@ function S:Register()
 
     AddSectionHeader(automationCategory, "Achievement Screenshots")
     BuildAchievementScreenshotControls(automationCategory)
+    AddSectionHeader(automationCategory, "Auction House")
+    BuildAuctionHouseFilterControls(automationCategory)
     AddSectionHeader(automationCategory, "Cinematics")
     BuildCinematicsControls(automationCategory)
     AddSectionHeader(automationCategory, "Dialogs")
     BuildAutoConfirmDialogsControls(automationCategory)
     AddSectionHeader(automationCategory, "Tutorials")
     BuildTutorialsControls(automationCategory)
-    AddSectionHeader(automationCategory, "Auction House")
-    BuildAuctionHouseFilterControls(automationCategory)
 
     local clickableBuffsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Clickable Buffs")
     self.clickableBuffsCategoryID = clickableBuffsCategory:GetID()
@@ -4996,14 +5514,16 @@ function S:Register()
     local combatCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Combat")
     self.combatCategoryID = combatCategory:GetID()
 
-    AddSectionHeader(combatCategory, "Combat Logging")
-    BuildAutoCombatLogControls(combatCategory)
     AddSectionHeader(combatCategory, "Action GCD Streamer")
     BuildActionGCDStreamerControls(combatCategory)
+    AddSectionHeader(combatCategory, "Combat Logging")
+    BuildAutoCombatLogControls(combatCategory)
     AddSectionHeader(combatCategory, "Crosshair")
     BuildCrosshairControls(combatCategory)
     AddSectionHeader(combatCategory, "Floating Combat Text")
     BuildFloatingCombatTextControls(combatCategory)
+    AddSectionHeader(combatCategory, "Mouse Cursor")
+    BuildMouseCursorControls(combatCategory)
 
     local currenciesCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Currency")
     self.currenciesCategoryID = currenciesCategory:GetID()
@@ -5035,6 +5555,8 @@ function S:Register()
     local interfaceCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Interface")
     self.interfaceCategoryID = interfaceCategory:GetID()
 
+    AddSectionHeader(interfaceCategory, "Clean Names in Instances")
+    BuildCleanNamesInInstancesControls(interfaceCategory)
     AddSectionHeader(interfaceCategory, "Clean Objective Tracker")
     BuildCleanObjectiveTrackerControls(interfaceCategory)
     AddSectionHeader(interfaceCategory, "Low Durability")
@@ -5049,14 +5571,14 @@ function S:Register()
     BuildHideTalkingHeadControls(interfaceCategory)
     BuildScreenshotStatusControls(interfaceCategory)
     BuildQuestTrackerStateControls(interfaceCategory)
-    AddSectionHeader(interfaceCategory, "Clean Names in Instances")
-    BuildCleanNamesInInstancesControls(interfaceCategory)
 
     local minimapCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Minimap")
     self.minimapCategoryID = minimapCategory:GetID()
 
     AddSectionHeader(minimapCategory, "Automatic Zoom")
     BuildMinimapControls(minimapCategory)
+    AddSectionHeader(minimapCategory, "Enhanced Resource Icons")
+    BuildMinimapEnhancedResourceIconsControls(minimapCategory)
     AddSectionHeader(minimapCategory, "Waypoint Tracking")
     BuildWaypointTrackingControls(minimapCategory)
 
@@ -5069,22 +5591,23 @@ function S:Register()
     local professionsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Professions")
     self.professionsCategoryID = professionsCategory:GetID()
 
-    AddSectionHeader(professionsCategory, "Simple First Craft Bonus")
-    BuildSimpleFirstCraftBonusControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Easy Disenchant")
     BuildEasyDisenchantControls(professionsCategory)
+    AddSectionHeader(professionsCategory, "Personal Crafting Orders")
     BuildPersonalCraftingOrdersControls(professionsCategory)
+    AddSectionHeader(professionsCategory, "Simple First Craft Bonus")
+    BuildSimpleFirstCraftBonusControls(professionsCategory)
 
     local settingsAnchorsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Settings & Anchors")
     self.settingsAnchorsCategoryID = settingsAnchorsCategory:GetID()
 
+    AddSectionHeader(settingsAnchorsCategory, "Anchors")
+    BuildAnchorsControls(settingsAnchorsCategory)
     AddSectionHeader(settingsAnchorsCategory, "General")
     BuildCommonControls(settingsAnchorsCategory)
     BuildLuaErrorsControls(settingsAnchorsCategory)
     AddSectionHeader(settingsAnchorsCategory, "Slash Commands")
     BuildSlashCommandControls(settingsAnchorsCategory)
-    AddSectionHeader(settingsAnchorsCategory, "Anchors")
-    BuildAnchorsControls(settingsAnchorsCategory)
 
     local statsPlusCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Stats+")
     self.statsPlusCategoryID = statsPlusCategory:GetID()

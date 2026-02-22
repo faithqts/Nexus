@@ -21,6 +21,11 @@ FN.VOICE_PACK_ACTORS = FN.VOICE_PACK_ACTORS or {
     xalatath = "Xalatath",
     liadrin = "Liadrin",
     cortana = "Cortana",
+    hazel = "Hazel",
+    ion = "Ion",
+    jimmy = "Jimmy",
+    khadgar = "Khadgar",
+    magni = "Magni",
 }
 
 function FN:InRestrictiveEnvironment()
@@ -184,7 +189,7 @@ function FN:GetVoicePackOptionsData()
     end
 
     local c = Settings.CreateControlTextContainer()
-    local orderedActors = { "xalatath", "liadrin", "cortana" }
+    local orderedActors = { "cortana", "hazel", "ion", "jimmy", "khadgar", "liadrin", "magni", "xalatath" }
     for _, actor in ipairs(orderedActors) do
         local label = (self.VOICE_PACK_ACTORS and self.VOICE_PACK_ACTORS[actor]) or actor
         c:Add(actor, label)
@@ -219,8 +224,12 @@ function FN:GetVoicePackSoundPaths(actor, filename, addonName)
     local safeAddon = tostring(addonName or (NX and NX.name) or "Nexus")
 
     return {
+        string.format("Interface\\AddOns\\%s\\media\\voices\\%s\\%s", safeAddon, safeActor, soundFile),
+        string.format("Interface\\AddOns\\%s\\Media\\voices\\%s\\%s", safeAddon, safeActor, soundFile),
         string.format("Interface\\AddOns\\%s\\media\\voice\\%s\\%s", safeAddon, safeActor, soundFile),
         string.format("Interface\\AddOns\\%s\\Media\\voice\\%s\\%s", safeAddon, safeActor, soundFile),
+        string.format("Interface/AddOns/%s/media/voices/%s/%s", safeAddon, safeActor, soundFile),
+        string.format("Interface/AddOns/%s/Media/voices/%s/%s", safeAddon, safeActor, soundFile),
         string.format("Interface/AddOns/%s/media/voice/%s/%s", safeAddon, safeActor, soundFile),
         string.format("Interface/AddOns/%s/Media/voice/%s/%s", safeAddon, safeActor, soundFile),
     }

@@ -11,12 +11,13 @@ local EVENT_SOUND_FILES = {
     JEEVES = "jeeves.ogg",
     MAILBOX = "mailbox.ogg",
     AUTO_HAMMER = "repair_hammer.ogg",
-    SOULWELL = "soulwell.ogg",
+    SOULWELL = "healthstones.ogg",
     MAGE_TABLE = "mage_table.ogg",
 }
 
 local DEFAULTS = {
     enabled = true,
+    soundEnabled = true,
     textSize = 28,
     align = "CENTER",
     duration = 3,
@@ -43,17 +44,37 @@ for _, eventData in ipairs(EVENTS) do
     }
 end
 
-local SPELL_ID_TO_EVENT = {}
+local SPELL_ID_TO_EVENTS = {}
 for _, eventData in ipairs(EVENTS) do
     for _, spellID in ipairs(eventData.spellIDs) do
-        SPELL_ID_TO_EVENT[spellID] = eventData
+        SPELL_ID_TO_EVENTS[spellID] = SPELL_ID_TO_EVENTS[spellID] or {}
+        table.insert(SPELL_ID_TO_EVENTS[spellID], eventData)
     end
 end
 
+local function ResolveEventDataForSpell(spellID)
+    local candidates = SPELL_ID_TO_EVENTS[tonumber(spellID)]
+    if type(candidates) ~= "table" or #candidates == 0 then
+        return nil
+    end
+
+    for _, eventData in ipairs(candidates) do
+        if UA:IsEventEnabled(eventData.key) then
+            return eventData
+        end
+    end
+
+    return candidates[1]
+end
+
 local alertFrame
+local eventFrame
 local activeAlerts = {}
 local nextAlertId = 1
 local recentCastGuids = {}
+local spellCooldownExpiresAt = {}
+
+local EVENT_COOLDOWN_SECONDS = 10
 
 local DEFAULT_ANCHOR_X = 0
 local DEFAULT_ANCHOR_Y = 200
@@ -139,6 +160,7 @@ function UA:EnsureDB()
     CopyDefaults(db, DEFAULTS)
 
     db.enabled = db.enabled and true or false
+    db.soundEnabled = db.soundEnabled and true or false
     db.textSize = math.floor(FN:ClampNumber(db.textSize, 8, 72) + 0.5)
     db.align = NormalizeAlign(db.align)
     db.duration = math.floor(FN:ClampNumber(db.duration, 1, 5) + 0.5)
@@ -458,6 +480,10 @@ end
 
 function UA:PlayConfiguredSound(eventKey)
     local db = self:EnsureDB()
+    if db.soundEnabled == false then
+        return false
+    end
+
     local actor = FN:NormalizeVoicePackActor(FN:GetSharedVoicePackActor() or db.voicePack)
     local selectedPaths = GetVoicePackSoundPaths(actor, eventKey)
     if type(selectedPaths) ~= "table" or #selectedPaths == 0 then
@@ -478,13 +504,23 @@ function UA:PlayConfiguredSound(eventKey)
     return false
 end
 
-function UA:AddAlert(text, color, eventKey)
+function UA:AddAlert(text, color, eventKey, sourceSpellID)
     local db = self:EnsureDB()
     if not db.enabled then
         return
     end
     if eventKey and not self:IsEventEnabled(eventKey) then
         return
+    end
+
+    local cooldownSpellID = tonumber(sourceSpellID)
+    if cooldownSpellID then
+        local now = GetTime()
+        local expiresAt = spellCooldownExpiresAt[cooldownSpellID] or 0
+        if now < expiresAt then
+            return
+        end
+        spellCooldownExpiresAt[cooldownSpellID] = now + EVENT_COOLDOWN_SECONDS
     end
 
     local duration = db.duration
@@ -564,7 +600,7 @@ function UA:HandleUnitSpellcastSucceeded(unitToken, castGUID, spellID)
         end)
     end
 
-    local eventData = SPELL_ID_TO_EVENT[tonumber(spellID)]
+    local eventData = ResolveEventDataForSpell(spellID)
     if not eventData then
         return
     end
@@ -572,7 +608,7 @@ function UA:HandleUnitSpellcastSucceeded(unitToken, castGUID, spellID)
         return
     end
 
-    self:AddAlert(eventData.label, eventData.color, eventData.key)
+    self:AddAlert(eventData.label, eventData.color, eventData.key, spellID)
 end
 
 function UA:OnEvent(event, ...)
@@ -728,6 +764,14 @@ function UA:Init()
     self:EnsureDB()
     self:EnsureFrame()
     self:RefreshAlertDisplay()
+
+    if not eventFrame then
+        eventFrame = CreateFrame("Frame")
+        eventFrame:SetScript("OnEvent", function(_, event, ...)
+            UA:OnEvent(event, ...)
+        end)
+    end
+    eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 end
 
 

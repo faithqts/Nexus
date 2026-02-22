@@ -93,8 +93,8 @@ local function GetArmorReductionPct(armorValue)
 end
 
 function SP:EnsureDB()
-    NX.DB.statsPlus.statsPlus = NX.DB.statsPlus.statsPlus or {}
-    local db = NX.DB.statsPlus.statsPlus
+    NX.DB.statsPlus = NX.DB.statsPlus or {}
+    local db = NX.DB.statsPlus
 
     if db.enabled == nil then db.enabled = false end
     if db.anchorX == nil then db.anchorX = DEFAULT_ANCHOR_X end
