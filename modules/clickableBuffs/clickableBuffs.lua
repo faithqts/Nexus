@@ -23,65 +23,85 @@ CB.pendingRefresh = CB.pendingRefresh or false
 CB.AnchorDisplayName = CB.AnchorDisplayName or "Clickable Buffs"
 
 CB.tracked_spells_items = {
-    { spellID = 462854, spellName = "Skyfury", text = "Sky", buff = true },
-    { spellID = 364342, spellName = "Blessing of the Bronze", text = "Bronze", buff = true },
+    { spellID = 462854, spellName = "Skyfury", text = "Skyfury", buff = true },
+    {
+        spellID = 364342,
+        spellName = "Blessing of the Bronze",
+        text = "Bronze",
+        buff = true,
+        altSpellIDs = {
+            381732,
+            381741,
+            381746,
+            381748,
+            381749,
+            381750,
+            381751,
+            381752,
+            381753,
+            381754,
+            381756,
+            381757,
+            381758,
+        },
+    },
     { spellID = 1126, spellName = "Mark of the Wild", text = "MotW", buff = true },
-    { spellID = 1459, spellName = "Arcane Intellect", text = "Int", buff = true },
+    { spellID = 1459, spellName = "Arcane Intellect", text = "Arcane\nIntellect", buff = true },
     { spellID = 21562, spellName = "Power Word: Fortitude", text = "Fort", buff = true },
-    { spellID = 6673, spellName = "Battle Shout", text = "BS", buff = true },
-    { spellID = 465, spellName = "Devotion Aura", text = "Dev", buff = true, auraGroup = "PALADIN_AURA" },
-    { spellID = 317920, spellName = "Concentration Aura", text = "Conc", buff = true, auraGroup = "PALADIN_AURA" },
+    { spellID = 6673, spellName = "Battle Shout", text = "Battle\nShout", buff = true },
+    { spellID = 465, spellName = "Devotion Aura", text = "Devotion\nAura", buff = true, auraGroup = "PALADIN_AURA" },
+    { spellID = 317920, spellName = "Concentration Aura", text = "Concentration\nAura", buff = true, auraGroup = "PALADIN_AURA" },
 
-    { spellID = 318038, spellName = "Flametongue Weapon", text = "Imbue", imbue = true, preferredHand = "OFF" },
-    { spellID = 33757, spellName = "Windfury Weapon", text = "Imbue", imbue = true, preferredHand = "MAIN" },
+    { spellID = 318038, spellName = "Flametongue Weapon", text = "Flametongue\nWeapon", imbue = true, preferredHand = "OFF" },
+    { spellID = 33757, spellName = "Windfury Weapon", text = "Windfury\nWeapon", imbue = true, preferredHand = "MAIN" },
 
-    { spellID = 394328, spellName = "Amplifying Poison", text = "Poison", poison = true, lethal = true },
-    { spellID = 5763, spellName = "Mind-numbing Poison", text = "Poison", poison = true, lethal = true },
-    { spellID = 2823, spellName = "Deadly Poison", text = "Poison", poison = true, lethal = true },
-    { spellID = 315584, spellName = "Instant Poison", text = "Poison", poison = true, lethal = true },
-    { spellID = 8679, spellName = "Wound Poison", text = "Poison", poison = true, lethal = true },
+    { spellID = 394328, spellName = "Amplifying Poison", text = "Amplifying\nPoison", poison = true, lethal = true },
+    { spellID = 5763, spellName = "Mind-numbing Poison", text = "Numbing\nPoison", poison = true, lethal = true },
+    { spellID = 2823, spellName = "Deadly Poison", text = "Deadly\nPoison", poison = true, lethal = true },
+    { spellID = 315584, spellName = "Instant Poison", text = "Instant\nPoison", poison = true, lethal = true },
+    { spellID = 8679, spellName = "Wound Poison", text = "Wound\nPoison", poison = true, lethal = true },
 
-    { spellID = 5761, spellName = "Numbing Poison", text = "Poison", poison = true, lethal = false },
-    { spellID = 381637, spellName = "Atrophic Poison", text = "Poison", poison = true, lethal = false },
-    { spellID = 3408, spellName = "Crippling Poison", text = "Poison", poison = true, lethal = false },
+    { spellID = 5761, spellName = "Numbing Poison", text = "Numbing\nPoison", poison = true, lethal = false },
+    { spellID = 381637, spellName = "Atrophic Poison", text = "Atrophic\nPoison", poison = true, lethal = false },
+    { spellID = 3408, spellName = "Crippling Poison", text = "Crippling\nPoison", poison = true, lethal = false },
     
-    { spellID = 433568, spellName = "Rite of Sanctification", text = "Sanct", imbue = true, preferredHand = "MAIN" },
-    { spellID = 433583, spellName = "Rite of Adjuration", text = "Adj", imbue = true, preferredHand = "MAIN" },
+    { spellID = 433568, spellName = "Rite of Sanctification", text = "Sanctification", imbue = true, preferredHand = "MAIN" },
+    { spellID = 433583, spellName = "Rite of Adjuration", text = "Adjuration", imbue = true, preferredHand = "MAIN" },
 
-    { itemID = 241313, spellID = 1239755, spellName = "Haranir Phial of Ingenuity", text = "Ing", flask = true },
-    { itemID = 241317, spellID = 1236763, spellName = "Haranir Phial of Perception", text = "Per", flask = true },
-    { itemID = 241311, spellID = 1236767, spellName = "Haranir Phial of Finesse", text = "Fin", flask = true },
-    { itemID = 241325, spellID = 1235110, spellName = "Flask of the Blood Knights", text = "Blood", flask = true },
-    { itemID = 241323, spellID = 1235108, spellName = "Flask of the Magisters", text = "Magi", flask = true },
-    { itemID = 241327, spellID = 1235111, spellName = "Flask of the Shattered Sun", text = "Sun", flask = true },
-    { itemID = 241321, spellID = 1235057, spellName = "Flask of Thalassian Resistance", text = "Res", flask = true },
+    { itemID = 241313, spellID = 1239755, spellName = "Haranir Phial of Ingenuity", text = "Ingenuity", flask = true },
+    { itemID = 241317, spellID = 1236763, spellName = "Haranir Phial of Perception", text = "Perception", flask = true },
+    { itemID = 241311, spellID = 1236767, spellName = "Haranir Phial of Finesse", text = "Finesse", flask = true },
+    { itemID = 241325, spellID = 1235110, spellName = "Flask of the Blood Knights", text = "Haste", flask = true },
+    { itemID = 241323, spellID = 1235108, spellName = "Flask of the Magisters", text = "Mastery", flask = true },
+    { itemID = 241327, spellID = 1235111, spellName = "Flask of the Shattered Sun", text = "Crit", flask = true },
+    { itemID = 241321, spellID = 1235057, spellName = "Flask of Thalassian Resistance", text = "Vers", flask = true },
 
-    { itemID = 242273, spellName = "Blooming Feast", text = "Food", food = true },
-    { itemID = 255846, spellName = "Harandar Celebration", text = "Food", food = true },
-    { itemID = 242272, spellName = "Quel'dorei Medley", text = "Food", food = true },
-    { itemID = 255845, spellName = "Silvermoon Parade", text = "Food", food = true },
-    { itemID = 242275, spellName = "Royal Roast", text = "Food", food = true },
-    { itemID = 255847, spellName = "Impossibly Royal Roast", text = "Food", food = true },
-    { itemID = 255848, spellName = "Flora Frenzy", text = "Food", food = true },
-    { itemID = 242274, spellName = "Champion's Bento", text = "Food", food = true },
-    { itemID = 242745, spellName = "Hearty Blooming Feast", text = "HFood", food = true },
-    { itemID = 266996, spellName = "Hearty Harandar Celebration", text = "HFood", food = true },
-    { itemID = 242744, spellName = "Hearty Quel'dorei Medley", text = "HFood", food = true },
-    { itemID = 266986, spellName = "Hearty Quel'dorei Medley", text = "HFood", food = true },
-    { itemID = 266985, spellName = "Hearty Silvermoon Parade", text = "HFood", food = true },
-    { itemID = 242747, spellName = "Hearty Royal Roast", text = "HFood", food = true },
-    { itemID = 268679, spellName = "Hearty Impossibly Royal Roast", text = "HFood", food = true },
-    { itemID = 267000, spellName = "Hearty Flora Frenzy", text = "HFood", food = true },
-    { itemID = 268680, spellName = "Hearty Flora Frenzy", text = "HFood", food = true },
-    { itemID = 242746, spellName = "Hearty Champion's Bento", text = "HFood", food = true },
+    { itemID = 242273, spellName = "Blooming Feast", text = "Stat", food = true },
+    { itemID = 255846, spellName = "Harandar Celebration", text = "Primary", food = true },
+    { itemID = 242272, spellName = "Quel'dorei Medley", text = "Stat", food = true },
+    { itemID = 255845, spellName = "Silvermoon Parade", text = "Primary", food = true },
+    { itemID = 242275, spellName = "Royal Roast", text = "Primary", food = true },
+    { itemID = 255847, spellName = "Impossibly Royal Roast", text = "Primary", food = true },
+    { itemID = 255848, spellName = "Flora Frenzy", text = "Stat", food = true },
+    { itemID = 242274, spellName = "Champion's Bento", text = "Stat", food = true },
+    { itemID = 242745, spellName = "Hearty Blooming Feast", text = "Hearty\nStat", food = true },
+    { itemID = 266996, spellName = "Hearty Harandar Celebration", text = "Hearty\nPrimary", food = true },
+    { itemID = 242744, spellName = "Hearty Quel'dorei Medley", text = "Hearty\nStat", food = true },
+    { itemID = 266986, spellName = "Hearty Quel'dorei Medley", text = "Hearty\nStat", food = true },
+    { itemID = 266985, spellName = "Hearty Silvermoon Parade", text = "Hearty\nPrimary", food = true },
+    { itemID = 242747, spellName = "Hearty Royal Roast", text = "Hearty\nPrimary", food = true },
+    { itemID = 268679, spellName = "Hearty Impossibly Royal Roast", text = "Hearty\nPrimary", food = true },
+    { itemID = 267000, spellName = "Hearty Flora Frenzy", text = "Hearty\nStat", food = true },
+    { itemID = 268680, spellName = "Hearty Flora Frenzy", text = "Hearty\nStat", food = true },
+    { itemID = 242746, spellName = "Hearty Champion's Bento", text = "Hearty\nStat", food = true },
 
-    { itemID = 243733, spellName = "Thalassian Phoenix Oil", text = "Oil", oil = true },
-    { itemID = 243737, spellName = "Smuggler's Enchanted Edge", text = "Oil", oil = true },
-    { itemID = 243735, spellName = "Oil of Dawn", text = "Oil", oil = true },
-    { itemID = 237367, spellName = "Refulgent Weightstone", text = "Oil", oil = true },
-    { itemID = 237372, spellName = "Refulgent Razorstone", text = "Oil", oil = true },
-    { itemID = 237370, spellName = "Refulgent Whetstone", text = "Oil", oil = true },
-    { itemID = 222503, spellName = "Refulgent Whetstone", text = "Oil", oil = true },
+    { itemID = 243733, spellName = "Thalassian Phoenix Oil", text = "Weapon\nBuff", oil = true },
+    { itemID = 243737, spellName = "Smuggler's Enchanted Edge", text = "Weapon\nBuff", oil = true },
+    { itemID = 243735, spellName = "Oil of Dawn", text = "Weapon\nBuff", oil = true },
+    { itemID = 237367, spellName = "Refulgent Weightstone", text = "Weapon\nBuff", oil = true },
+    { itemID = 237372, spellName = "Refulgent Razorstone", text = "Weapon\nBuff", oil = true },
+    { itemID = 237370, spellName = "Refulgent Whetstone", text = "Weapon\nBuff", oil = true },
+    { itemID = 222503, spellName = "Refulgent Whetstone", text = "Weapon\nBuff", oil = true },
 }
 
 local function HasPlayerAuraBySpellID(spellID)
@@ -98,14 +118,16 @@ local function HasPlayerAuraBySpellID(spellID)
 
     if AuraUtil and AuraUtil.ForEachAura then
         local found = false
-        AuraUtil.ForEachAura("player", "HELPFUL", nil, function(_, _, _, _, _, _, _, _, _, auraSpellID)
-            if auraSpellID == spellID then
-                found = true
-                return true
-            end
-            return false
+        local ok = pcall(function()
+            AuraUtil.ForEachAura("player", "HELPFUL", nil, function(auraData)
+                if type(auraData) == "table" and auraData.spellId == spellID then
+                    found = true
+                    return true
+                end
+                return false
+            end, true)
         end)
-        if found then
+        if ok and found then
             return true
         end
     end
@@ -120,6 +142,26 @@ local function HasPlayerAuraByName(name)
 
     local ok, aura = pcall(AuraUtil.FindAuraByName, name, "player", "HELPFUL")
     return ok and aura ~= nil
+end
+
+local function HasPlayerAuraForEntry(entry)
+    if type(entry) ~= "table" then
+        return false
+    end
+
+    if entry.spellID and HasPlayerAuraBySpellID(entry.spellID) then
+        return true
+    end
+
+    if type(entry.altSpellIDs) == "table" then
+        for _, spellID in ipairs(entry.altSpellIDs) do
+            if type(spellID) == "number" and HasPlayerAuraBySpellID(spellID) then
+                return true
+            end
+        end
+    end
+
+    return false
 end
 
 local function IsSpellKnownForPlayer(spellID)
@@ -201,19 +243,31 @@ local function IsWeaponInSlot(slotID)
 end
 
 local function GetSpellVisual(spellID, fallbackName)
-    if C_Spell and C_Spell.GetSpellInfo then
-        local info = C_Spell.GetSpellInfo(spellID)
-        if info then
-            return info.name or fallbackName, info.iconID
+    local name
+    local icon
+
+    if C_Spell then
+        if C_Spell.GetSpellName then
+            name = C_Spell.GetSpellName(spellID)
         end
-    elseif GetSpellInfo then
-        local name, _, icon = GetSpellInfo(spellID)
-        if name then
-            return name, icon
+        if C_Spell.GetSpellTexture then
+            icon = C_Spell.GetSpellTexture(spellID)
+        end
+
+        if (not name or not icon) and C_Spell.GetSpellInfo then
+            local info = C_Spell.GetSpellInfo(spellID)
+            if info then
+                name = name or info.name
+                icon = icon or info.iconID
+            end
         end
     end
 
-    return fallbackName or ("Spell " .. tostring(spellID or 0)), 134400
+    if name then
+        return name, icon or 134400
+    end
+
+    return fallbackName or ("Spell " .. tostring(spellID or 0)), icon or 134400
 end
 
 local function GetItemVisual(itemID, fallbackName)
@@ -592,18 +646,32 @@ function CB:UpdateDragHandle()
 end
 
 function CB:HideAll()
+    local inCombat = InCombatLockdown and InCombatLockdown()
+
     if self.Anchor then
-        self.Anchor:Hide()
+        if inCombat then
+            self.Anchor:SetAlpha(0)
+            self._hiddenViaCombat = true
+        else
+            self.Anchor:Hide()
+        end
     end
 
     for _, btn in ipairs(self.Buttons) do
         self:SetButtonFlashing(btn, false)
-        btn:Hide()
+        if not inCombat then
+            btn:Hide()
+        end
     end
 
     if self.DragHandle then
-        self.DragHandle:Hide()
-        self.DragHandle:EnableMouse(false)
+        if inCombat then
+            self.DragHandle:SetAlpha(0)
+            self.DragHandle:EnableMouse(false)
+        else
+            self.DragHandle:Hide()
+            self.DragHandle:EnableMouse(false)
+        end
     end
 end
 
@@ -694,7 +762,7 @@ function CB:BuildVisibleEntries()
     for _, entry in ipairs(self.tracked_spells_items) do
         if entry.buff then
             local isKnown = entry.spellID and IsSpellKnownForPlayer(entry.spellID)
-            local isMissing = entry.spellID and not HasPlayerAuraBySpellID(entry.spellID)
+            local isMissing = not HasPlayerAuraForEntry(entry)
             local groupMissing = not entry.auraGroup or not state.activeAuraGroups[entry.auraGroup]
             if isKnown and isMissing and groupMissing then
                 visible[#visible + 1] = entry
@@ -888,7 +956,9 @@ function CB:LayoutButtons(visibleEntries)
 
     for i = count + 1, #self.Buttons do
         self:SetButtonFlashing(self.Buttons[i], false)
-        self.Buttons[i]:Hide()
+        if not (InCombatLockdown and InCombatLockdown()) then
+            self.Buttons[i]:Hide()
+        end
     end
 end
 
@@ -897,6 +967,16 @@ function CB:UpdateAll()
         self.pendingRefresh = true
         self:HideAll()
         return
+    end
+
+    if self._hiddenViaCombat then
+        self._hiddenViaCombat = false
+        if self.Anchor then
+            self.Anchor:SetAlpha(1)
+        end
+        if self.DragHandle then
+            self.DragHandle:SetAlpha(1)
+        end
     end
 
     self:EnsureDB()

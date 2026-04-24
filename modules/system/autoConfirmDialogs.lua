@@ -27,7 +27,16 @@ local function HandleAutoConfirmDialog(frame)
     if not frame or not frame.which then return end
     if not ShouldAutoConfirm(frame.which) then return end
 
-    local btn = frame.button1 or (frame.GetButton and frame:GetButton(1))
+    local preferredIndex = 1
+    if frame.which == "REPLACE_ENCHANT" then
+        preferredIndex = 2
+    end
+
+    local btn = frame["button" .. tostring(preferredIndex)] or (frame.GetButton and frame:GetButton(preferredIndex))
+    if not btn then
+        btn = frame.button1 or (frame.GetButton and frame:GetButton(1))
+    end
+
     if btn and btn.Click then
         btn:Click()
     end

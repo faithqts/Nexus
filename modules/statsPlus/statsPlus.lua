@@ -24,6 +24,8 @@ SP.DragHandle = SP.DragHandle or nil
 SP.EventFrame = SP.EventFrame or nil
 SP.LinePool = SP.LinePool or {}
 SP.LastText = SP.LastText or {}
+SP._lastLayoutKey = SP._lastLayoutKey or nil
+SP._lastLayoutAnchor = SP._lastLayoutAnchor or nil
 SP.pendingRefresh = SP.pendingRefresh or false
 SP.pendingAuraRecheck = SP.pendingAuraRecheck or false
 SP.AnchorDisplayName = SP.AnchorDisplayName or "Stats+"
@@ -42,8 +44,147 @@ local function Hex(h)
     return "|cff" .. h
 end
 
+local function SafeToNumber(value, fallback)
+    local defaultValue = fallback
+    if type(defaultValue) ~= "number" then
+        defaultValue = tonumber(defaultValue) or 0
+    end
+
+    local ok, numberValue = pcall(tonumber, value)
+    if not ok or type(numberValue) ~= "number" then
+        return defaultValue
+    end
+
+    local safeOk, normalized = pcall(function()
+        return numberValue + 0
+    end)
+    if safeOk and type(normalized) == "number" then
+        return normalized
+    end
+
+    return defaultValue
+end
+
 local function Pct(x)
-    return string.format("%.2f%%", tonumber(x) or 0)
+    local ok, formatted = pcall(string.format, "%.2f%%", x)
+    if ok then
+        return formatted
+    end
+
+    local okText, text = pcall(tostring, x)
+    if okText then
+        return text
+    end
+
+    return "0.00%"
+end
+
+local function SafeAdd(left, right, fallback)
+    local ok, sum = pcall(function()
+        return (left or 0) + (right or 0)
+    end)
+    if ok then
+        return sum
+    end
+
+    if type(fallback) ~= "nil" then
+        return fallback
+    end
+
+    return 0
+end
+
+local function SafeMin(limit, value, fallback)
+    local ok, minValue = pcall(function()
+        return math.min(limit, value)
+    end)
+    if ok then
+        return minValue
+    end
+
+    if type(fallback) ~= "nil" then
+        return fallback
+    end
+
+    return value
+end
+
+local function SafeCall(defaultValue, fn, ...)
+    if not fn then
+        return defaultValue
+    end
+
+    local ok, value = pcall(fn, ...)
+    if ok and type(value) ~= "nil" then
+        return value
+    end
+
+    return defaultValue
+end
+
+local function GetPrimaryStatFallbackName()
+    local _, classTag = UnitClass("player")
+
+    if classTag == "WARRIOR" or classTag == "DEATHKNIGHT" then
+        return "Strength"
+    end
+
+    if classTag == "HUNTER" or classTag == "ROGUE" or classTag == "DEMONHUNTER" then
+        return "Agility"
+    end
+
+    if classTag == "MAGE" or classTag == "PRIEST" or classTag == "WARLOCK" or classTag == "EVOKER" then
+        return "Intellect"
+    end
+
+    local spec = GetSpecialization and GetSpecialization() or nil
+    local specID = spec and GetSpecializationInfo and select(1, GetSpecializationInfo(spec)) or nil
+
+    if classTag == "PALADIN" then
+        if specID == 65 then
+            return "Intellect"
+        end
+        return "Strength"
+    end
+
+    if classTag == "SHAMAN" then
+        return "Intellect"
+    end
+
+    if classTag == "DRUID" then
+        if specID == 102 or specID == 105 then
+            return "Intellect"
+        end
+        return "Agility"
+    end
+
+    if classTag == "MONK" then
+        if specID == 270 then
+            return "Intellect"
+        end
+        return "Agility"
+    end
+
+    return "Strength"
+end
+
+local function GetPrimaryStatIndexByName(statName)
+    if statName == "Agility" then
+        return 2
+    end
+    if statName == "Intellect" then
+        return 4
+    end
+    return 1
+end
+
+local function SafeToString(value, fallback)
+    local ok, text = pcall(tostring, value)
+    if ok then
+        return text
+    end
+
+    return fallback or "0"
 end
 
 local function IsTankRole()
@@ -55,37 +196,46 @@ local function IsTankRole()
 end
 
 local function GetPrimaryStat()
-    local str = select(2, UnitStat("player", 1)) or 0
-    local agi = select(2, UnitStat("player", 2)) or 0
-    local intl = select(2, UnitStat("player", 4)) or 0
+    local fallbackName = GetPrimaryStatFallbackName()
+    local statIndex = GetPrimaryStatIndexByName(fallbackName)
 
-    if agi >= str and agi >= intl then
-        return "Agility", agi
+    local statValue = 0
+    if UnitStat then
+        local ok, _, effective = pcall(UnitStat, "player", statIndex)
+        if ok then
+            statValue = effective or 0
+        end
     end
-    if str >= agi and str >= intl then
-        return "Strength", str
-    end
-    return "Intellect", intl
+
+    return fallbackName, SafeToString(statValue, "0")
 end
 
 local function GetArmorValue()
-    local base, effective = UnitArmor("player")
+    if not UnitArmor then
+        return 0
+    end
+
+    local ok, base, effective = pcall(UnitArmor, "player")
+    if not ok then
+        return 0
+    end
+
     return effective or base or 0
 end
 
 local function GetArmorReductionPct(armorValue)
-    local armor = tonumber(armorValue) or 0
+    local armor = SafeToNumber(armorValue, 0)
     if armor < 0 then
         armor = 0
     end
 
-    local attackerLevel = UnitLevel and UnitLevel("player") or 0
-    attackerLevel = math.max(1, tonumber(attackerLevel) or 1)
+    local attackerLevel = SafeToNumber(SafeCall(1, UnitLevel, "player"), 1)
+    attackerLevel = math.max(1, attackerLevel)
 
     if PaperDollFrame_GetArmorReduction then
         local ok, reduction = pcall(PaperDollFrame_GetArmorReduction, armor, attackerLevel)
-        if ok and type(reduction) == "number" then
-            return math.max(0, reduction)
+        if ok then
+            return math.max(0, SafeToNumber(reduction, 0))
         end
     end
 
@@ -93,6 +243,7 @@ local function GetArmorReductionPct(armorValue)
 end
 
 function SP:EnsureDB()
+    NX.DB = NX.DB or {}
     NX.DB.statsPlus = NX.DB.statsPlus or {}
     local db = NX.DB.statsPlus
 
@@ -245,6 +396,11 @@ function SP:ApplyLineLayout(visibleCount)
     local growthDirection = self:GetTextGrowthDirection()
     local fontSize = self:GetEffectiveFontSize()
     local lineCount = math.max(1, math.floor(tonumber(visibleCount) or 1))
+    local layoutKey = string.format("%s|%s|%d|%d", align, growthDirection, fontSize, lineCount)
+
+    if self._lastLayoutKey == layoutKey and self._lastLayoutAnchor == self.Anchor then
+        return
+    end
 
     for index = 1, 7 do
         local line = self:EnsureLine(index)
@@ -290,20 +446,24 @@ function SP:ApplyLineLayout(visibleCount)
         end
         line:SetJustifyV(isGrowingUp and "BOTTOM" or "TOP")
     end
+
+    self._lastLayoutKey = layoutKey
+    self._lastLayoutAnchor = self.Anchor
 end
 
 function SP:SetLine(index, text)
     local line = self:EnsureLine(index)
-    local value = text or ""
-    if self.LastText[index] ~= value then
-        self.LastText[index] = value
-        line:SetText(value)
-    end
-    if value == "" then
+
+    if type(text) == "nil" then
+        self.LastText[index] = ""
+        line:SetText("")
         line:Hide()
-    else
-        line:Show()
+        return
     end
+
+    self.LastText[index] = text
+    line:SetText(text)
+    line:Show()
 end
 
 function SP:BuildLines()
@@ -312,35 +472,40 @@ function SP:BuildLines()
 
     if db.showPrimaryStat then
         local statName, statValue = GetPrimaryStat()
-        lines[#lines + 1] = Hex(COLOR.PRIMARY) .. statName .. ": " .. tostring(statValue) .. "|r"
+        lines[#lines + 1] = Hex(COLOR.PRIMARY) .. statName .. ": " .. SafeToString(statValue, "0") .. "|r"
     end
 
     if db.showHaste then
-        local hasteRating = GetCombatRating and (GetCombatRating(CR_HASTE_SPELL) or 0) or 0
-        local hastePct = UnitSpellHaste and (UnitSpellHaste("player") or 0) or 0
-        lines[#lines + 1] = Hex(COLOR.HASTE) .. "Haste: " .. tostring(hasteRating) .. " - " .. Pct(hastePct) .. "|r"
+        local hasteRating = SafeCall(0, GetCombatRating, CR_HASTE_SPELL)
+        local hastePct = SafeCall(0, UnitSpellHaste, "player")
+        lines[#lines + 1] = Hex(COLOR.HASTE) .. "Haste: " .. SafeToString(hasteRating, "0") .. " - " .. Pct(hastePct) .. "|r"
     end
 
     if db.showMastery then
-        local masteryRating = GetCombatRating and (GetCombatRating(CR_MASTERY) or 0) or 0
-        local masteryPct = GetMasteryEffect and (GetMasteryEffect() or 0) or 0
-        lines[#lines + 1] = Hex(COLOR.MASTERY) .. "Mastery: " .. tostring(masteryRating) .. " - " .. Pct(masteryPct) .. "|r"
+        local masteryRating = SafeCall(0, GetCombatRating, CR_MASTERY)
+        local masteryPct = SafeCall(0, GetMasteryEffect)
+        lines[#lines + 1] = Hex(COLOR.MASTERY) .. "Mastery: " .. SafeToString(masteryRating, "0") .. " - " .. Pct(masteryPct) .. "|r"
     end
 
     if db.showCriticalStrike then
-        local critRating = GetCombatRating and (GetCombatRating(CR_CRIT_SPELL) or 0) or 0
-        local critPct = GetCritChance and (GetCritChance() or 0) or 0
-        lines[#lines + 1] = Hex(COLOR.CRIT) .. "Crit: " .. tostring(critRating) .. " - " .. Pct(critPct) .. "|r"
+        local critRating = SafeCall(0, GetCombatRating, CR_CRIT_SPELL)
+        local critPct = SafeCall(0, GetCritChance)
+        lines[#lines + 1] = Hex(COLOR.CRIT) .. "Crit: " .. SafeToString(critRating, "0") .. " - " .. Pct(critPct) .. "|r"
     end
 
     if db.showVersatility then
-        local versRating = GetCombatRating and (GetCombatRating(CR_VERSATILITY_DAMAGE_DONE) or 0) or 0
-        local versDoneExtra = GetVersatilityBonus and (GetVersatilityBonus(CR_VERSATILITY_DAMAGE_DONE) or 0) or 0
-        local versTakenExtra = GetVersatilityBonus and (GetVersatilityBonus(CR_VERSATILITY_DAMAGE_TAKEN) or versDoneExtra) or versDoneExtra
-        local versDonePct = (GetCombatRatingBonus and (GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE) or 0) or 0) + versDoneExtra
-        local versTakenPct = (GetCombatRatingBonus and (GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_TAKEN) or 0) or 0) + versTakenExtra
+        local versRating = SafeCall(0, GetCombatRating, CR_VERSATILITY_DAMAGE_DONE)
+        local versDoneExtra = SafeCall(0, GetVersatilityBonus, CR_VERSATILITY_DAMAGE_DONE)
+        local versTakenExtra = SafeCall(nil, GetVersatilityBonus, CR_VERSATILITY_DAMAGE_TAKEN)
+        if type(versTakenExtra) == "nil" then
+            versTakenExtra = versDoneExtra
+        end
+        local versDoneBase = SafeCall(0, GetCombatRatingBonus, CR_VERSATILITY_DAMAGE_DONE)
+        local versTakenBase = SafeCall(0, GetCombatRatingBonus, CR_VERSATILITY_DAMAGE_TAKEN)
+        local versDonePct = SafeAdd(versDoneBase, versDoneExtra, versDoneBase)
+        local versTakenPct = SafeAdd(versTakenBase, versTakenExtra, versTakenBase)
         lines[#lines + 1] = Hex(COLOR.VERS)
-            .. "Vers: " .. tostring(versRating)
+            .. "Vers: " .. SafeToString(versRating, "0")
             .. " - " .. Pct(versDonePct)
             .. " / " .. Pct(versTakenPct)
             .. "|r"
@@ -351,16 +516,18 @@ function SP:BuildLines()
             local armor = GetArmorValue()
             local reductionPct = GetArmorReductionPct(armor)
             lines[#lines + 1] = Hex(COLOR.ARMOR)
-                .. "Armor: " .. tostring(armor)
+                .. "Armor: " .. SafeToString(armor, "0")
                 .. " - " .. Pct(reductionPct)
                 .. "|r"
         end
 
         if db.showMeleeAvoidance then
-            local dodge = GetDodgeChance and (GetDodgeChance() or 0) or 0
-            local parry = GetParryChance and (GetParryChance() or 0) or 0
-            local block = GetBlockChance and (GetBlockChance() or 0) or 0
-            local total = math.min(100, dodge + parry + block)
+            local dodge = SafeCall(0, GetDodgeChance)
+            local parry = SafeCall(0, GetParryChance)
+            local block = SafeCall(0, GetBlockChance)
+            local total = SafeAdd(dodge, parry, dodge)
+            total = SafeAdd(total, block, total)
+            total = SafeMin(100, total, total)
             lines[#lines + 1] = Hex(COLOR.AVOID) .. "Melee Avoidance: " .. Pct(total) .. "|r"
         end
     end
@@ -495,7 +662,7 @@ function SP:UpdateAll()
 
     local maxLines = 7
     for i = 1, maxLines do
-        self:SetLine(i, lines[i] or "")
+        self:SetLine(i, lines[i])
     end
 
     self.Anchor:Show()

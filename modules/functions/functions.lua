@@ -33,6 +33,23 @@ function FN:InRestrictiveEnvironment()
     return self.restricted.inRaidEncounter or self.restricted.inChallengeRun
 end
 
+function FN:IsProgrammaticChatAllowed()
+    if self:InRestrictiveEnvironment() then
+        return false
+    end
+
+    if not IsInInstance then
+        return true
+    end
+
+    local ok, inInstance = pcall(IsInInstance)
+    if ok and inInstance then
+        return false
+    end
+
+    return true
+end
+
 function FN:GetChallengeModeActiveNow()
     if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive then
         local ok, active = pcall(C_ChallengeMode.IsChallengeModeActive)
@@ -52,6 +69,17 @@ function FN:GetChallengeModeActiveNow()
 end
 
 function FN:ReconcileChallengeRestrictionState()
+    if self.restricted.inRaidEncounter then
+        if IsInInstance then
+            local ok, inInstance, instanceType = pcall(IsInInstance)
+            if (not ok) or (not inInstance) or instanceType ~= "raid" then
+                self.restricted.inRaidEncounter = false
+            end
+        else
+            self.restricted.inRaidEncounter = false
+        end
+    end
+
     if not self.restricted.inChallengeRun then
         self.restricted.challengeInactiveSince = nil
         return
@@ -60,6 +88,15 @@ function FN:ReconcileChallengeRestrictionState()
     if self:GetChallengeModeActiveNow() then
         self.restricted.challengeInactiveSince = nil
         return
+    end
+
+    if IsInInstance then
+        local ok, inInstance, instanceType = pcall(IsInInstance)
+        if ok and ((not inInstance) or instanceType ~= "party") then
+            self.restricted.inChallengeRun = false
+            self.restricted.challengeInactiveSince = nil
+            return
+        end
     end
 
     local now = GetTime and GetTime() or 0
@@ -147,9 +184,6 @@ end
 function FN:HandleRestrictionEvent(event, ...)
     if event == "ENCOUNTER_START" then
         self.restricted.inRaidEncounter = true
-        if NX.MythicPlus and NX.MythicPlus.StopWatcher then
-            NX.MythicPlus:StopWatcher()
-        end
         return
     end
 
@@ -162,9 +196,6 @@ function FN:HandleRestrictionEvent(event, ...)
         self.restricted.inChallengeRun = true
         self.restricted.challengeInactiveSince = nil
         self:EnsureChallengeSelfHealTicker()
-        if NX.MythicPlus and NX.MythicPlus.StopWatcher then
-            NX.MythicPlus:StopWatcher()
-        end
         return
     end
 
@@ -431,7 +462,11 @@ end
 
 function FN:GetAddonFontPath()
     local defaultPath = self.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
-    local selected = NX and NX.DB and NX.DB.media.fonts.addonFontPath
+    local selected
+
+    if NX and NX.DB and NX.DB.media and NX.DB.media.fonts then
+        selected = NX.DB.media.fonts.addonFontPath
+    end
 
     if type(selected) ~= "string" or selected == "" then
         return defaultPath
@@ -448,6 +483,9 @@ function FN:SetAddonFontPath(path)
     if not NX or not NX.DB then
         return self.DEFAULT_FONT_PATH or "Fonts\\FRIZQT__.TTF"
     end
+
+    NX.DB.media = NX.DB.media or {}
+    NX.DB.media.fonts = NX.DB.media.fonts or {}
 
     local selected = path
     if not self:IsFontPathAvailable(selected) then

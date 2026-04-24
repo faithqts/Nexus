@@ -1,0 +1,6 @@
+.github/*
+!.github/workflows/
+!.github/workflows/**
+.vscode/
+references/
+.git/*

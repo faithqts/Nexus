@@ -123,20 +123,28 @@ end
 
 local function GetSpellLabel(spellID, fallbackName, fallbackText)
     local name, icon
-    if C_Spell and C_Spell.GetSpellInfo then
-        local info = C_Spell.GetSpellInfo(spellID)
-        if info then
-            name = info.name
-            icon = info.iconID
+
+    if C_Spell then
+        if C_Spell.GetSpellName then
+            name = C_Spell.GetSpellName(spellID)
         end
-    elseif GetSpellInfo then
-        name, _, icon = GetSpellInfo(spellID)
+        if C_Spell.GetSpellTexture then
+            icon = C_Spell.GetSpellTexture(spellID)
+        end
+        if (not name or not icon) and C_Spell.GetSpellInfo then
+            local info = C_Spell.GetSpellInfo(spellID)
+            if info then
+                name = name or info.name
+                icon = icon or info.iconID
+            end
+        end
     end
 
     if name then
-        return name, icon
+        return name, icon or 134400
     end
-    return (fallbackName or fallbackText or ("Spell " .. tostring(spellID))), 134400
+
+    return (fallbackName or fallbackText or ("Spell " .. tostring(spellID))), icon or 134400
 end
 
 local function GetSpellCooldownCompat(spellID)
@@ -145,18 +153,22 @@ local function GetSpellCooldownCompat(spellID)
         if cd then
             return cd.startTime, cd.duration, cd.isEnabled
         end
-    elseif GetSpellCooldown then
-        return GetSpellCooldown(spellID)
     end
 
     return 0, 0, 0
 end
 
 local function BuildNoCombatCastMacro(spellID, spellName)
-    if spellName and spellName ~= "" then
-        return "/cast [nocombat] " .. spellName
+    local castName = spellName
+    if (not castName or castName == "") and spellID and C_Spell and C_Spell.GetSpellName then
+        castName = C_Spell.GetSpellName(spellID)
     end
-    return "/cast [nocombat] spell:" .. tostring(spellID or 0)
+
+    if castName and castName ~= "" then
+        return "/cast [nocombat] " .. castName
+    end
+
+    return nil
 end
 
 local function BuildEquivalentSuppressionMap(entries)
@@ -213,6 +225,7 @@ local function IsSafeToRenderPortals()
 end
 
 function P:EnsureDB()
+    NX.DB = NX.DB or {}
     NX.DB.portals = NX.DB.portals or {}
     local db = NX.DB.portals
 
@@ -233,6 +246,11 @@ function P:IsEnabled()
 end
 
 function P:HideAll()
+    if InCombatLockdown() then
+        self.pendingRefresh = true
+        return
+    end
+
     if self.Anchor then
         self.Anchor:Hide()
     end
@@ -296,14 +314,7 @@ function P:BuildButtons()
                 local spellID = self.spellID
                 local spellName = nil
                 if spellID then
-                    if C_Spell and C_Spell.GetSpellInfo then
-                        local info = C_Spell.GetSpellInfo(spellID)
-                        if info then
-                            spellName = info.name
-                        end
-                    elseif GetSpellInfo then
-                        spellName = GetSpellInfo(spellID)
-                    end
+                    spellName = select(1, GetSpellLabel(spellID, self.entry and self.entry.spellName, self.entry and self.entry.text))
                 end
                 spellName = spellName or (self.entry and self.entry.spellName) or ("Spell " .. tostring(spellID or 0))
 

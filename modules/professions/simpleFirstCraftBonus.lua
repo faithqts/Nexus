@@ -54,6 +54,10 @@ do
             return nil
         end
 
+        if row.Count then
+            return row.Count
+        end
+
         if row.Label then
             return row.Label
         end
@@ -77,7 +81,7 @@ do
             icon:SetAtlas(ATLAS_FIRST_CRAFT, true)
         end
         icon:ClearAllPoints()
-        icon:SetPoint("RIGHT", textAnchor, "LEFT", -5, -1)
+        icon:SetPoint("LEFT", textAnchor, "RIGHT", 5, -1)
         icon:SetScale(0.65)
         return icon
     end

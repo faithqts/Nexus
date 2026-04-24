@@ -132,13 +132,13 @@ local function ApplyHitIndicators()
             and _G.PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
             and _G.PlayerFrame.PlayerFrameContent.PlayerFrameContentMain.HitIndicator
     end)
-    if okPlayer and playerHit and playerHit.Hide and playerHit.Show then
-        if cfg.hideOverPlayer then playerHit:Hide() else playerHit:Show() end
+    if okPlayer and playerHit and playerHit.Hide then
+        if cfg.hideOverPlayer then playerHit:Hide() end
     end
 
     local petHit = _G.PetHitIndicator
-    if petHit and petHit.Hide and petHit.Show then
-        if cfg.hideOverPet then petHit:Hide() else petHit:Show() end
+    if petHit and petHit.Hide then
+        if cfg.hideOverPet then petHit:Hide() end
     end
 end
 

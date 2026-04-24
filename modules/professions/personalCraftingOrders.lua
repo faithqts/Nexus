@@ -10,6 +10,7 @@ do
     local NEW_ORDER_ANCHOR_EXTRA_VERTICAL_PADDING = 20
     local NEW_ORDER_ANCHOR_LABEL_FONT_SIZE = 16
     local NEW_ORDER_SOUND_FILE = "new_personal_crafting_order.ogg"
+    PCO.lastKnownPersonalOrderCount = PCO.lastKnownPersonalOrderCount
 
     local DEFAULTS = {
         textAlertEnabled = false,
@@ -28,7 +29,6 @@ do
         newOrderDuration = 4,
     }
 
-    local TRIGGER_TEXT_EN = "You have received a new Personal Crafting Order."
     local NEW_ORDER_ALERT_TEXT = "NEW PERSONAL ORDER RECEIVED"
 
     local function BuildVoicePackSoundPaths(actor, filename)
@@ -114,6 +114,14 @@ do
             end
         end
 
+        return total
+    end
+
+    local function ClampOrderCount(total)
+        total = tonumber(total) or 0
+        if total < 0 then
+            total = 0
+        end
         return total
     end
 
@@ -497,10 +505,7 @@ do
             return
         end
 
-        local total = tonumber(GetTotalPersonalOrders()) or 0
-        if total < 0 then
-            total = 0
-        end
+        local total = ClampOrderCount(GetTotalPersonalOrders())
 
         display.Text:SetText(string.format("%d Open Personal Orders", total))
         display:Show()
@@ -538,11 +543,18 @@ do
         self:SetEnabled(not db.textAlertEnabled)
     end
 
-    function PCO:HandleSystemMessage(msg)
-        if type(msg) ~= "string" then
+    function PCO:HandlePersonalOrderCountUpdate()
+        local total = ClampOrderCount(GetTotalPersonalOrders())
+
+        if self.lastKnownPersonalOrderCount == nil then
+            self.lastKnownPersonalOrderCount = total
             return
         end
-        if msg ~= TRIGGER_TEXT_EN then
+
+        local previous = self.lastKnownPersonalOrderCount
+        self.lastKnownPersonalOrderCount = total
+
+        if total <= previous then
             return
         end
 
@@ -581,6 +593,9 @@ do
 
     function PCO:Apply()
         self:EnsureDB()
+        if self.lastKnownPersonalOrderCount == nil then
+            self.lastKnownPersonalOrderCount = ClampOrderCount(GetTotalPersonalOrders())
+        end
         self:EnsureHooks()
         self:Update()
         self:EnsureNewOrderDisplay()
@@ -626,13 +641,13 @@ do
         frame = CreateFrame("Frame")
         frame:RegisterEvent("ADDON_LOADED")
         frame:RegisterEvent("CRAFTINGORDERS_UPDATE_PERSONAL_ORDER_COUNTS")
-        frame:RegisterEvent("CHAT_MSG_SYSTEM")
         frame:RegisterEvent("PLAYER_ENTERING_WORLD")
         frame:RegisterEvent("UI_SCALE_CHANGED")
 
         frame:SetScript("OnEvent", function(_, event, arg1)
-            if event == "CHAT_MSG_SYSTEM" then
-                PCO:HandleSystemMessage(arg1)
+            if event == "CRAFTINGORDERS_UPDATE_PERSONAL_ORDER_COUNTS" then
+                PCO:HandlePersonalOrderCountUpdate()
+                PCO:Apply()
                 return
             end
 

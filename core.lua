@@ -36,18 +36,6 @@ local defaults = {
     },
 
     dungeonsRaids = {
-        mythicPlus = {
-            respondToKeys = false,
-            keysResponderCooldownSeconds = 5,
-            autoHideObjectives = false,
-            objectiveTrackerRestoreDelaySeconds = 30,
-        },
-        keyHelpers = {
-            autoInsertKeystone = false,
-            tankMarker = 6,
-            healerMarker = 4,
-            markingStyle = "leader",
-        },
         greatVault = {
             enabled = false,
             anchorX = 0,
@@ -96,42 +84,6 @@ local defaults = {
             pulseSpeedHz = 2.2,
             flashSpeedHz = 4.0,
             rotateRps = 0.5,
-        },
-        actionGCDStreamer = {
-            enabled = false,
-            duration = 7.5,
-            limit = 7,
-            iconSize = 30,
-            iconZoomPct = 10,
-            spacing = 1,
-            growthDirection = "LEFT",
-            tooltipOnMouseover = false,
-            showLastCastMS = false,
-            showLastCastMSFontSize = 12,
-            anchorX = 0,
-            anchorY = 0,
-            positionUnlocked = false,
-            blacklist = { 75 },
-        },
-        floatingCombatText = {
-            hideOverPlayer = false,
-            hideOverPet = false,
-            showCombatDamage = false,
-            showCombatHealing = false,
-            showHealingAbsorbSelf = false,
-            showHealingAbsorbTarget = false,
-            showCombatState = false,
-            showComboPoints = false,
-            showDamageReduction = false,
-            showDodgeParryMiss = false,
-            showEnergyGains = false,
-            showFloatMode = false,
-            showFriendlyHealers = false,
-            showHonorGains = false,
-            showLowManaHealth = false,
-            showPeriodicEnergyGains = false,
-            showPetMeleeDamage = false,
-            showPetSpellDamage = false,
         },
         assistedRotationOverlay = {
             enabled = false,
@@ -201,6 +153,9 @@ local defaults = {
         autoPlaceSpells = {
             enabled = false,
         },
+        catalyst = {
+            enabled = true,
+        },
         hideTalkingHead = {
             enabled = false,
         },
@@ -232,32 +187,6 @@ local defaults = {
         auctionHouse = {
             currentExpansionOnly = false,
         },
-        cleanNamesInInstances = {
-            enabled = false,
-            inInstanceShowGuild = false,
-            inInstanceShowTitle = false,
-            inInstanceSize = 12,
-            inInstanceMinAlpha = 1.0,
-        },
-        currencies = {
-            enabled = false,
-            selfPoint = "TOPLEFT",
-            characterFramePoint = "TOPRIGHT",
-            x = 0,
-            y = 0,
-            scale = 1.0,
-            fontSize = 12,
-            showBackground = false,
-            list = {
-                { id = 3378, text = "Catalyst Charges" },
-                { id = 3383, text = "Adventurer Dawncrest" },
-                { id = 3341, text = "Veteran Dawncrest" },
-                { id = 3343, text = "Champion Dawncrest" },
-                { id = 3345, text = "Hero Dawncrest" },
-                { id = 3347, text = "Myth Dawncrest" },
-                { id = 3316, text = "Voidlight Marl" },
-            },
-        },
     },
 
     professions = {
@@ -285,28 +214,6 @@ local defaults = {
                 color = { 0, 0, 0, 1 },
             },
         },
-        personalCraftingOrders = {
-            textAlertEnabled = false,
-            newOrderAlertEnabled = false,
-            soundAlertEnabled = false,
-            voicePack = "cortana",
-        },
-    },
-
-    equipment = {
-        enabled = false,
-        flashText = false,
-        fontSize = 28,
-        align = "CENTER",
-        grow = "DOWN",
-        anchorX = 0,
-        anchorY = 180,
-        positionUnlocked = false,
-        blacklistCsv = "",
-        checkMissingGems = true,
-        checkSocketRequirements = true,
-        checkMissingEnchants = true,
-        considerEnchantId0Missing = true,
     },
 
     alerts = {
@@ -319,27 +226,6 @@ local defaults = {
             anchorX = 0,
             anchorY = 300,
             positionUnlocked = false,
-        },
-        alertEvents = {
-            enabled = false,
-            anchorX = 0,
-            anchorY = 200,
-            positionUnlocked = false,
-            textSize = 28,
-            align = "CENTER",
-            duration = 3,
-            grow = "UP",
-            events = {
-                FEAST = { enabled = true, flashing = false },
-                POTION_CAULDRON = { enabled = true, flashing = false },
-                FLASK_CAULDRON = { enabled = true, flashing = false },
-                JEEVES = { enabled = true, flashing = false },
-                MAILBOX = { enabled = true, flashing = false },
-                AUTO_HAMMER = { enabled = true, flashing = false },
-                SOULWELL = { enabled = true, flashing = false },
-                MAGE_TABLE = { enabled = true, flashing = false },
-            },
-            voicePack = "cortana",
         },
     },
 
@@ -467,73 +353,6 @@ local function SeedCVarBackedDefaults(db)
 
     db.system.autoPlaceSpells = db.system.autoPlaceSpells or {}
     db.system.autoPlaceSpells.enabled = CV:GetBool("AutoPushSpellToActionBar", db.system.autoPlaceSpells.enabled == true)
-
-    db.combat = db.combat or {}
-    db.combat.floatingCombatText = db.combat.floatingCombatText or {}
-    db.combat.floatingCombatText.showCombatDamage = CV:GetBool(
-        "floatingCombatTextCombatDamage_v2",
-        db.combat.floatingCombatText.showCombatDamage == true
-    )
-    db.combat.floatingCombatText.showCombatHealing = CV:GetBool(
-        "floatingCombatTextCombatHealing_v2",
-        db.combat.floatingCombatText.showCombatHealing == true
-    )
-    db.combat.floatingCombatText.showHealingAbsorbSelf = CV:GetBool(
-        "floatingCombatTextCombatHealingAbsorbSelf_v2",
-        db.combat.floatingCombatText.showHealingAbsorbSelf == true
-    )
-    db.combat.floatingCombatText.showHealingAbsorbTarget = CV:GetBool(
-        "floatingCombatTextCombatHealingAbsorbTarget_v2",
-        db.combat.floatingCombatText.showHealingAbsorbTarget == true
-    )
-    db.combat.floatingCombatText.showCombatState = CV:GetBool(
-        "floatingCombatTextCombatState_v2",
-        db.combat.floatingCombatText.showCombatState == true
-    )
-    db.combat.floatingCombatText.showComboPoints = CV:GetBool(
-        "floatingCombatTextComboPoints_v2",
-        db.combat.floatingCombatText.showComboPoints == true
-    )
-    db.combat.floatingCombatText.showDamageReduction = CV:GetBool(
-        "floatingCombatTextDamageReduction_v2",
-        db.combat.floatingCombatText.showDamageReduction == true
-    )
-    db.combat.floatingCombatText.showDodgeParryMiss = CV:GetBool(
-        "floatingCombatTextDodgeParryMiss_v2",
-        db.combat.floatingCombatText.showDodgeParryMiss == true
-    )
-    db.combat.floatingCombatText.showEnergyGains = CV:GetBool(
-        "floatingCombatTextEnergyGains_v2",
-        db.combat.floatingCombatText.showEnergyGains == true
-    )
-    db.combat.floatingCombatText.showFloatMode = CV:GetBool(
-        "floatingCombatTextFloatMode_v2",
-        db.combat.floatingCombatText.showFloatMode == true
-    )
-    db.combat.floatingCombatText.showFriendlyHealers = CV:GetBool(
-        "floatingCombatTextFriendlyHealers_v2",
-        db.combat.floatingCombatText.showFriendlyHealers == true
-    )
-    db.combat.floatingCombatText.showHonorGains = CV:GetBool(
-        "floatingCombatTextHonorGains_v2",
-        db.combat.floatingCombatText.showHonorGains == true
-    )
-    db.combat.floatingCombatText.showLowManaHealth = CV:GetBool(
-        "floatingCombatTextLowManaHealth_v2",
-        db.combat.floatingCombatText.showLowManaHealth == true
-    )
-    db.combat.floatingCombatText.showPeriodicEnergyGains = CV:GetBool(
-        "floatingCombatTextPeriodicEnergyGains_v2",
-        db.combat.floatingCombatText.showPeriodicEnergyGains == true
-    )
-    db.combat.floatingCombatText.showPetMeleeDamage = CV:GetBool(
-        "floatingCombatTextPetMeleeDamage_v2",
-        db.combat.floatingCombatText.showPetMeleeDamage == true
-    )
-    db.combat.floatingCombatText.showPetSpellDamage = CV:GetBool(
-        "floatingCombatTextPetSpellDamage_v2",
-        db.combat.floatingCombatText.showPetSpellDamage == true
-    )
 
     db._cvarSeeded = true
 end
@@ -678,10 +497,6 @@ local function CallModule(method, ...)
     end
 end
 
-if NX.MythicPlus then
-    RegisterModule("MythicPlus", NX.MythicPlus)
-end
-
 if NX.Vault then
     RegisterModule("Vault", NX.Vault)
 end
@@ -712,10 +527,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
             NX.Crosshair:Init()
         end
 
-        if NX.MythicPlus and NX.MythicPlus.Init then
-            NX.MythicPlus:Init()
-        end
-
         if NX.Vault and NX.Vault.Init then
             NX.Vault:Init()
         end
@@ -739,9 +550,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.MouseCursor and NX.MouseCursor.Init then
             NX.MouseCursor:Init()
         end
-        if NX.ActionGCDStreamer and NX.ActionGCDStreamer.Init then
-            NX.ActionGCDStreamer:Init()
-        end
         if NX.AlwaysSharpen and NX.AlwaysSharpen.Init then
             NX.AlwaysSharpen:Init()
         end
@@ -764,11 +572,11 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.AutoPlaceSpells and NX.AutoPlaceSpells.Init then
             NX.AutoPlaceSpells:Init()
         end
+        if NX.Catalyst and NX.Catalyst.Init then
+            NX.Catalyst:Init()
+        end
         if NX.CVarStateSync and NX.CVarStateSync.Init then
             NX.CVarStateSync:Init()
-        end
-        if NX.FloatingCombatText and NX.FloatingCombatText.Init then
-            NX.FloatingCombatText:Init()
         end
         if NX.AssistedRotationOverlay and NX.AssistedRotationOverlay.Init then
             NX.AssistedRotationOverlay:Init()
@@ -809,14 +617,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.SimpleFirstCraftBonus and NX.SimpleFirstCraftBonus.Init then
             NX.SimpleFirstCraftBonus:Init()
         end
-        if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.Init then
-            NX.PersonalCraftingOrders:Init()
-        end
         if NX.EasyDisenchant and NX.EasyDisenchant.Init then
             NX.EasyDisenchant:Init()
-        end
-        if NX.AlertEvents and NX.AlertEvents.Init then
-            NX.AlertEvents:Init()
         end
         if NX.Minimap and NX.Minimap.Init then
             NX.Minimap:Init()
@@ -829,15 +631,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.StatsPlus and NX.StatsPlus.Init then
             NX.StatsPlus:Init()
-        end
-        if NX.CleanNamesInInstances and NX.CleanNamesInInstances.Init then
-            NX.CleanNamesInInstances:Init()
-        end
-        if NX.Currencies and NX.Currencies.Init then
-            NX.Currencies:Init()
-        end
-        if NX.Equipment and NX.Equipment.Init then
-            NX.Equipment:Init()
         end
         if NX.BankWarboundItems and NX.BankWarboundItems.Init then
             NX.BankWarboundItems:Init()
@@ -909,26 +702,15 @@ SlashCmdList["NEXUS"] = function(msg)
         if cmd == "help" or cmd == "?" then
             print("|cffffd200Nexus:|r /nx opens Settings")
             print("|cffffd200Nexus:|r /nx buffs help")
-            print("|cffffd200Nexus:|r /nx gcd help")
-            print("|cffffd200Nexus:|r /nx alerts help")
             print("|cffffd200Nexus:|r /nx mouse help")
             print("|cffffd200Nexus:|r /nx minimap help")
             print("|cffffd200Nexus:|r /nx resourceicons help")
-            print("|cffffd200Nexus:|r /nx porders help")
             print("|cffffd200Nexus:|r /nx disenchant help")
-            print("|cffffd200Nexus:|r /nx equipment help")
             print("|cffffd200Nexus:|r /nx warbank help")
-            print("|cffffd200Nexus:|r /nx currency help")
             print("|cffffd200Nexus:|r /nx stats help")
             print("|cffffd200Nexus:|r /nx vault help")
             print("|cffffd200Nexus:|r /nx durability help")
             return
-        end
-        if (cmd == "gcd" or cmd == "gcdstreamer") and NX.ActionGCDStreamer and NX.ActionGCDStreamer.HandleNxSlash then
-            local handled = NX.ActionGCDStreamer:HandleNxSlash(rest)
-            if handled then
-                return
-            end
         end
         if cmd == "durability" and NX.Common and NX.Common.LowDurability and NX.Common.LowDurability.HandleNxSlash then
             local handled = NX.Common.LowDurability:HandleNxSlash(rest)
@@ -948,20 +730,8 @@ SlashCmdList["NEXUS"] = function(msg)
                 return
             end
         end
-        if (cmd == "porders" or cmd == "personalorders") and NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.HandleNxSlash then
-            local handled = NX.PersonalCraftingOrders:HandleNxSlash(rest)
-            if handled then
-                return
-            end
-        end
         if cmd == "disenchant" and NX.EasyDisenchant and NX.EasyDisenchant.HandleNxSlash then
             local handled = NX.EasyDisenchant:HandleNxSlash(rest)
-            if handled then
-                return
-            end
-        end
-        if (cmd == "currency" or cmd == "currencies") and NX.Currencies and NX.Currencies.HandleNxSlash then
-            local handled = NX.Currencies:HandleNxSlash(rest)
             if handled then
                 return
             end
@@ -972,21 +742,11 @@ SlashCmdList["NEXUS"] = function(msg)
                 return
             end
         end
-        if cmd == "alerts" and NX.AlertEvents and NX.AlertEvents.HandleNxSlash then
-            local handled = NX.AlertEvents:HandleNxSlash(rest)
-            if handled then
-                return
-            end
-        end
         if cmd == "mouse" and NX.MouseCursor and NX.MouseCursor.HandleNxSlash then
             local handled = NX.MouseCursor:HandleNxSlash(rest)
             if handled then
                 return
             end
-        end
-        if (cmd == "cnames" or cmd == "cleanname" or cmd == "cleannames") and NX.CleanNamesInInstances and NX.CleanNamesInInstances.Toggle then
-            NX.CleanNamesInInstances:Toggle()
-            return
         end
         if cmd == "minimap" and NX.Minimap and NX.Minimap.HandleNxSlash then
             local handled = NX.Minimap:HandleNxSlash(rest)
@@ -996,12 +756,6 @@ SlashCmdList["NEXUS"] = function(msg)
         end
         if (cmd == "resourceicons" or cmd == "resources") and NX.MinimapResourceIcons and NX.MinimapResourceIcons.HandleNxSlash then
             local handled = NX.MinimapResourceIcons:HandleNxSlash(rest)
-            if handled then
-                return
-            end
-        end
-        if cmd == "equipment" and NX.Equipment and NX.Equipment.HandleNxSlash then
-            local handled = NX.Equipment:HandleNxSlash(rest)
             if handled then
                 return
             end

@@ -7,6 +7,7 @@ do
     local button
     local hookedFrame
     local pendingReanchor = false
+    local pendingVisibilityUpdate = false
 
     local DEFAULTS = {
         enabled = true,
@@ -41,28 +42,21 @@ do
             end
         end
 
-        if GetSpellInfo then
-            local name = GetSpellInfo(spellID)
-            if type(name) == "string" and name ~= "" then
-                return name
-            end
-        end
-
         return "Disenchant"
     end
 
     local function GetSpellIconFromID(spellID)
+        if C_Spell and C_Spell.GetSpellTexture then
+            local iconID = C_Spell.GetSpellTexture(spellID)
+            if iconID then
+                return iconID
+            end
+        end
+
         if C_Spell and C_Spell.GetSpellInfo then
             local info = C_Spell.GetSpellInfo(spellID)
             if info and info.iconID then
                 return info.iconID
-            end
-        end
-
-        if GetSpellTexture then
-            local ok, icon = pcall(GetSpellTexture, spellID)
-            if ok and icon then
-                return icon
             end
         end
 
@@ -292,12 +286,12 @@ do
     function ED:ShowButton()
         local db = self:EnsureDB()
         if not db.enabled then
-            if button then button:Hide() end
+            self:HideButton()
             return
         end
 
         if not self:ShouldShowButton() then
-            if button then button:Hide() end
+            self:HideButton()
             return
         end
 
@@ -307,18 +301,30 @@ do
         end
 
         if not self:EnsureButton() then
+            pendingVisibilityUpdate = true
             return
         end
 
         self:ApplyButtonVisuals()
         self:AnchorButtonTo(bagFrame)
+        if IsInCombat() then
+            pendingVisibilityUpdate = true
+            return
+        end
         button:Show()
     end
 
     function ED:HideButton()
-        if button then
-            button:Hide()
+        if not button then
+            return
         end
+
+        if IsInCombat() then
+            pendingVisibilityUpdate = true
+            return
+        end
+
+        button:Hide()
     end
 
     function ED:HookBagFrame(frameToHook)
@@ -447,6 +453,14 @@ do
                     pendingReanchor = false
                     if hookedFrame and hookedFrame:IsShown() then
                         ED:ShowButton()
+                    end
+                end
+                if pendingVisibilityUpdate then
+                    pendingVisibilityUpdate = false
+                    if hookedFrame and hookedFrame:IsShown() then
+                        ED:ShowButton()
+                    else
+                        ED:HideButton()
                     end
                 end
                 return

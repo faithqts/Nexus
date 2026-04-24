@@ -245,53 +245,6 @@ local function SetSharedVoicePackActor(actor)
     FN:SetSharedVoicePackActor(actor)
 end
 
-local MARKERS = {
-    { value = nil, label = "None" },
-    { value = 1, label = "Star" },
-    { value = 2, label = "Circle" },
-    { value = 3, label = "Diamond" },
-    { value = 4, label = "Triangle" },
-    { value = 5, label = "Moon" },
-    { value = 6, label = "Square" },
-    { value = 7, label = "Cross" },
-    { value = 8, label = "Skull" },
-}
-
-local MARKING_STYLES = {
-    { value = "leader", label = "Group Leader" },
-    { value = "always", label = "Always" },
-    { value = "never",  label = "Never" },
-}
-
-local function GetMarkerOptionsData(excludeMarker)
-    local c = Settings.CreateControlTextContainer()
-    c:Add(0, "None")
-    for _, m in ipairs(MARKERS) do
-        if m.value ~= nil then
-            if excludeMarker == nil or m.value ~= excludeMarker then
-                c:Add(m.value, m.label)
-            end
-        end
-    end
-    return c:GetData()
-end
-
-local function GetStyleOptionsData()
-    local c = Settings.CreateControlTextContainer()
-    for _, s in ipairs(MARKING_STYLES) do
-        c:Add(s.value, s.label)
-    end
-    return c:GetData()
-end
-
-local function EnsureUniqMarkers()
-    local t = NX.DB.dungeonsRaids.keyHelpers.tankMarker
-    local h = NX.DB.dungeonsRaids.keyHelpers.healerMarker
-    if t ~= nil and h ~= nil and t == h then
-        NX.DB.dungeonsRaids.keyHelpers.healerMarker = nil
-    end
-end
-
 local function CreateLandingPanel()
     local panel = CreateFrame("Frame")
 
@@ -345,32 +298,23 @@ local function CreateLandingPanel()
         return line
     end
 
-    local alertsHeader = CreateHeaderLine(body, "Alerts:")
-    local alertsBody = CreateBodyLine(alertsHeader, "Utility Alerts event configuration, text behavior, flashing, sounds, and anchor controls.")
-
-    local automationHeader = CreateHeaderLine(alertsBody, "Automation:")
+    local automationHeader = CreateHeaderLine(body, "Automation:")
     local automationBody = CreateBodyLine(automationHeader, "Achievement Screenshots, Cinematics, Dialog confirmations, Tutorials, and Auction House defaults.")
 
     local clickableBuffsHeader = CreateHeaderLine(automationBody, "Clickable Buffs:")
     local clickableBuffsBody = CreateBodyLine(clickableBuffsHeader, "Out-of-combat buff buttons, flashing, icon/text sizing, zoom, and anchor controls.")
 
     local combatHeader = CreateHeaderLine(clickableBuffsBody, "Combat:")
-    local combatBody = CreateBodyLine(combatHeader, "Auto Combat Log, Action GCD Streamer, Crosshair, and Floating Combat Text controls.")
+    local combatBody = CreateBodyLine(combatHeader, "Auto Combat Log, Crosshair, mouse cursor, and assisted rotation overlay controls.")
 
-    local currencyHeader = CreateHeaderLine(combatBody, "Currency:")
-    local currencyBody = CreateBodyLine(currencyHeader, "Tracked currency display toggles, scale, background visibility, and font sizing.")
+    local dungeonsHeader = CreateHeaderLine(combatBody, "Great Vault:")
+    local dungeonsBody = CreateBodyLine(dungeonsHeader, "Great Vault loot spec warning settings and anchor controls.")
 
-    local dungeonsHeader = CreateHeaderLine(currencyBody, "Dungeons & Raids:")
-    local dungeonsBody = CreateBodyLine(dungeonsHeader, "Great Vault and Mythic+ tools, including key handling and objective tracker behavior.")
-
-    local equipmentHeader = CreateHeaderLine(dungeonsBody, "Equipment:")
-    local equipmentBody = CreateBodyLine(equipmentHeader, "Missing gem/enchant checks, level filters, display style, blacklist, and anchor controls.")
-
-    local gameplayHeader = CreateHeaderLine(equipmentBody, "Gameplay:")
+    local gameplayHeader = CreateHeaderLine(dungeonsBody, "Gameplay:")
     local gameplayBody = CreateBodyLine(gameplayHeader, "Auto place spells and auto dismount behavior, including flying dismount controls.")
 
     local interfaceHeader = CreateHeaderLine(gameplayBody, "Interface:")
-    local interfaceBody = CreateBodyLine(interfaceHeader, "Objective tracker cleanup, durability/errors text, visual effect toggles, and clean names in instances.")
+    local interfaceBody = CreateBodyLine(interfaceHeader, "Objective tracker cleanup, durability/errors text, and visual effect toggles.")
 
     local minimapHeader = CreateHeaderLine(interfaceBody, "Minimap:")
     local minimapBody = CreateBodyLine(minimapHeader, "Automatic minimap zoom behavior and waypoint tracking options.")
@@ -379,7 +323,7 @@ local function CreateLandingPanel()
     local portalsBody = CreateBodyLine(portalsHeader, "Portal bar visibility, legacy portal filtering, layout sizing, spacing, and anchor positioning.")
 
     local professionsHeader = CreateHeaderLine(portalsBody, "Professions:")
-    local professionsBody = CreateBodyLine(professionsHeader, "Simple First Craft Bonus, Easy Disenchant, and Personal Crafting Orders controls.")
+    local professionsBody = CreateBodyLine(professionsHeader, "Simple First Craft Bonus and Easy Disenchant controls.")
 
     local settingsAnchorsHeader = CreateHeaderLine(professionsBody, "Settings & Anchors:")
     local settingsAnchorsBody = CreateBodyLine(settingsAnchorsHeader, "Shared addon settings, LUA errors, slash command toggles, and unified anchor toggles.")
@@ -637,50 +581,6 @@ local function BuildCommonControls(category)
             setting,
             GetAddonFontOptionsData,
             "Selects the shared font family used by Nexus labels and module text. Falls back to FrizQT when unavailable."
-        )
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue()
-            return GetSharedVoicePackActor()
-        end
-
-        local function SetValue(v)
-            local actor = NormalizeVoicePackActor(v)
-            SetSharedVoicePackActor(actor)
-
-            NX.DB.alerts = NX.DB.alerts or {}
-            NX.DB.alerts.alertEvents = NX.DB.alerts.alertEvents or {}
-            NX.DB.alerts.alertEvents.voicePack = actor
-
-            NX.DB.professions = NX.DB.professions or {}
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            NX.DB.professions.personalCraftingOrders.voicePack = actor
-
-            if NX.AlertEvents and NX.AlertEvents.OnSettingsChanged then
-                NX.AlertEvents:OnSettingsChanged()
-            end
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_SHARED_VOICE_PACK",
-            Settings.VarType.String,
-            "Voice Pack",
-            "xalatath",
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(
-            category,
-            setting,
-            GetVoicePackOptionsData,
-            "Selects the shared actor voice pack used by Utility Alerts and New Personal Crafting Order sounds."
         )
         init.reinitializeOnValueChanged = true
     end
@@ -1553,237 +1453,6 @@ local function BuildMouseCursorControls(category)
         local options = Settings.CreateSliderOptions(0.1, 5.0, 0.1)
         ApplyRightLabel(options, function(v) return string.format("%.1f rps", v) end)
         Settings.CreateSlider(category, setting, options, "Rotation speed in rotations per second.")
-    end
-end
-
-local function BuildMythicPlusControls(category)
-    do
-        local function GetValue()
-            return not not (NX.DB.dungeonsRaids.mythicPlus and NX.DB.dungeonsRaids.mythicPlus.respondToKeys)
-        end
-
-        local function SetValue(v)
-            NX.DB.dungeonsRaids.mythicPlus = NX.DB.dungeonsRaids.mythicPlus or {}
-            NX.DB.dungeonsRaids.mythicPlus.respondToKeys = not not v
-            if NX.MythicPlus and NX.MythicPlus.OnSettingsChanged then
-                NX.MythicPlus:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_MPLUS_RESPOND_KEYS",
-            Settings.VarType.Boolean,
-            "Respond to !keys",
-            true,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(
-            category,
-            setting,
-            "Replies in party chat with your keystone links when someone types !keys."
-        )
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.dungeonsRaids.mythicPlus and NX.DB.dungeonsRaids.mythicPlus.keysResponderCooldownSeconds) or 5
-        end
-
-        local function SetValue(v)
-            NX.DB.dungeonsRaids.mythicPlus = NX.DB.dungeonsRaids.mythicPlus or {}
-            v = tonumber(v) or 5
-            v = math.floor(v + 0.5)
-            if v < 1 then v = 1 end
-            if v > 10 then v = 10 end
-            NX.DB.dungeonsRaids.mythicPlus.keysResponderCooldownSeconds = v
-            if NX.MythicPlus and NX.MythicPlus.OnSettingsChanged then
-                NX.MythicPlus:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_MPLUS_KEYS_COOLDOWN",
-            Settings.VarType.Number,
-            "!keys Cooldown",
-            5,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(1, 10, 1)
-        ApplyRightLabel(options, function(value) return string.format("%ds", value) end)
-        Settings.CreateSlider(category, setting, options, "Controls the cooldown duration for responding to !keys in party chat, in seconds.")
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.dungeonsRaids.mythicPlus and NX.DB.dungeonsRaids.mythicPlus.autoHideObjectives)
-        end
-
-        local function SetValue(v)
-            NX.DB.dungeonsRaids.mythicPlus = NX.DB.dungeonsRaids.mythicPlus or {}
-            NX.DB.dungeonsRaids.mythicPlus.autoHideObjectives = not not v
-            if NX.MythicPlus and NX.MythicPlus.OnSettingsChanged then
-                NX.MythicPlus:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_MPLUS_AUTOHIDE_OBJECTIVES",
-            Settings.VarType.Boolean,
-            "Auto Hide Objective Tracker",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(
-            category,
-            setting,
-            "Hides the Objective Tracker during Mythic+ runs and updates visibility on relevant instance events."
-        )
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.dungeonsRaids.mythicPlus and NX.DB.dungeonsRaids.mythicPlus.objectiveTrackerRestoreDelaySeconds) or 30
-        end
-
-        local function SetValue(v)
-            NX.DB.dungeonsRaids.mythicPlus = NX.DB.dungeonsRaids.mythicPlus or {}
-            v = tonumber(v) or 30
-            v = math.floor(v + 0.5)
-            if v < 0 then v = 0 end
-            if v > 120 then v = 120 end
-            NX.DB.dungeonsRaids.mythicPlus.objectiveTrackerRestoreDelaySeconds = v
-            if NX.MythicPlus and NX.MythicPlus.OnSettingsChanged then
-                NX.MythicPlus:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_MPLUS_OBJ_RESTORE_DELAY",
-            Settings.VarType.Number,
-            "Objective Tracker Restore Delay",
-            30,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0, 120, 1)
-        ApplyRightLabel(options, function(value) return string.format("%ds", value) end)
-        Settings.CreateSlider(category, setting, options, "Controls how many seconds after a Mythic+ run ends, or after a player leaves the instance, before the Objective Tracker is shown again, if Auto Hide Objective Tracker is enabled.")
-    end
-
-    do
-        local setting = Settings.RegisterAddOnSetting(
-            category,
-            "NEXUS_AUTO_INSERT_KEYSTONE",
-            "autoInsertKeystone",
-            NX.DB,
-            Settings.VarType.Boolean,
-            "Auto Insert Keystone",
-            true
-        )
-        CreateEnabledDisabledDropdown(
-            category,
-            setting,
-            "Automatically inserts your keystone when the Mythic+ Keystone UI is opened."
-        )
-    end
-
-    AddSectionHeader(category, "Mythic+ Auto Marking (Players)")
-
-    do
-        local function GetValue() return NX.DB.dungeonsRaids.keyHelpers.markingStyle or "leader" end
-        local function SetValue(v) NX.DB.dungeonsRaids.keyHelpers.markingStyle = v end
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_MARKING_STYLE",
-            Settings.VarType.String,
-            "Marking Style",
-            "leader",
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(
-            category,
-            setting,
-            GetStyleOptionsData,
-            "This will determine when Auto Marking the Tank and Healer should happen."
-        )
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue() return NX.DB.dungeonsRaids.keyHelpers.tankMarker or 0 end
-        local function SetValue(v)
-            v = tonumber(v) or 0
-            local newMarker = (v == 0) and nil or v
-
-            NX.DB.dungeonsRaids.keyHelpers.tankMarker = newMarker
-            if newMarker ~= nil and NX.DB.dungeonsRaids.keyHelpers.healerMarker == newMarker then
-                NX.DB.dungeonsRaids.keyHelpers.healerMarker = nil
-            end
-            EnsureUniqMarkers()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_TANK_MARKER",
-            Settings.VarType.Number,
-            "Auto Mark Tank",
-            0,
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(
-            category,
-            setting,
-            function() return GetMarkerOptionsData(NX.DB.dungeonsRaids.keyHelpers.healerMarker) end,
-            "Automatically marks the tank during the Mythic+ Start Countdown."
-        )
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue() return NX.DB.dungeonsRaids.keyHelpers.healerMarker or 0 end
-        local function SetValue(v)
-            v = tonumber(v) or 0
-            local newMarker = (v == 0) and nil or v
-
-            NX.DB.dungeonsRaids.keyHelpers.healerMarker = newMarker
-            if newMarker ~= nil and NX.DB.dungeonsRaids.keyHelpers.tankMarker == newMarker then
-                NX.DB.dungeonsRaids.keyHelpers.tankMarker = nil
-            end
-            EnsureUniqMarkers()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_HEALER_MARKER",
-            Settings.VarType.Number,
-            "Auto Mark Healer",
-            0,
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(
-            category,
-            setting,
-            function() return GetMarkerOptionsData(NX.DB.dungeonsRaids.keyHelpers.tankMarker) end,
-            "Automatically marks the healer during the Mythic+ Start Countdown."
-        )
-        init.reinitializeOnValueChanged = true
     end
 end
 
@@ -2790,6 +2459,36 @@ local function BuildAutoPlaceSpellsControls(category)
     CreateEnabledDisabledDropdown(category, setting, "Controls the CVar AutoPushSpellToActionBar.")
 end
 
+local function BuildCatalystControls(category)
+    local function GetValue()
+        return not not (NX.DB.system.catalyst and NX.DB.system.catalyst.enabled)
+    end
+
+    local function SetValue(v)
+        NX.DB.system.catalyst = NX.DB.system.catalyst or {}
+        NX.DB.system.catalyst.enabled = not not v
+        if NX.Catalyst and NX.Catalyst.OnSettingsChanged then
+            NX.Catalyst:OnSettingsChanged()
+        end
+    end
+
+    local setting = Settings.RegisterProxySetting(
+        category,
+        "NEXUS_CATALYST_ENABLED",
+        Settings.VarType.Boolean,
+        "Instantly Catalyze Button",
+        false,
+        GetValue,
+        SetValue
+    )
+
+    CreateBooleanCheckboxControl(
+        category,
+        setting,
+        "Enable the button to instantly catalyze gear without a delay or confirmation"
+    )
+end
+
 local function BuildFloatingCombatTextControls(category)
     do
         local function GetValue() return not (not not (NX.DB.combat.floatingCombatText and NX.DB.combat.floatingCombatText.hideOverPlayer)) end
@@ -2898,14 +2597,14 @@ local function BuildLuaErrorsControls(category)
 end
 
 local function BuildTutorialsControls(category)
-    local function GetValue() return not (not not (NX.DB.system.tutorials and NX.DB.system.tutorials.disabled)) end
+    local function GetValue() return not not (NX.DB.system.tutorials and NX.DB.system.tutorials.disabled) end
     local function SetValue(v)
         NX.DB.system.tutorials = NX.DB.system.tutorials or {}
-        NX.DB.system.tutorials.disabled = not v
+        NX.DB.system.tutorials.disabled = not not v
         if NX.Tutorials and NX.Tutorials.OnSettingsChanged then NX.Tutorials:OnSettingsChanged() end
     end
-    local setting = Settings.RegisterProxySetting(category, "NEXUS_DISABLE_TUTORIALS", Settings.VarType.Boolean, "Tutorials", true, GetValue, SetValue)
-    CreateEnabledDisabledDropdown(category, setting, "Disables most tutorial popups when set to Disabled (showTutorials = 0).")
+    local setting = Settings.RegisterProxySetting(category, "NEXUS_DISABLE_TUTORIALS", Settings.VarType.Boolean, "Disable Tutorials", false, GetValue, SetValue)
+    CreateEnabledDisabledDropdown(category, setting, "When Enabled, Nexus disables most tutorial popups (showTutorials = 0).")
 end
 
 local function BuildScreenshotStatusControls(category)
@@ -2953,7 +2652,7 @@ local function BuildAutoConfirmDialogsControls(category)
         CreateEnabledDisabledDropdown(category, setting, tooltip)
     end
 
-    MakeToggle("replaceEnchant", "Accept Enchants", "Automatically confirms the enchant replacement dialog.")
+    MakeToggle("replaceEnchant", "Replace Enchants", "Automatically confirms the enchant replacement dialog.")
     MakeToggle("acceptSockets", "Replace Sockets", "Automatically confirms the socket replacement dialog.")
 
     BuildDeleteDialogControls(category)
@@ -5365,18 +5064,7 @@ local function BuildAnchorsControls(category)
         end)
     end
 
-    AddShowAnchorToggle("Action GCD Streamer", function()
-        return not not (NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.positionUnlocked)
-    end, function(v)
-        if NX.ActionGCDStreamer and NX.ActionGCDStreamer.SetPositionUnlocked then
-            NX.ActionGCDStreamer:SetPositionUnlocked(v, true)
-        else
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            NX.DB.combat.actionGCDStreamer.positionUnlocked = not not v
-        end
-    end)
-
-    AddShowAnchorToggle("Great Vault Loot Spec", function()
+    AddShowAnchorToggle("Loot Spec Warning", function()
         return not not (NX.DB.dungeonsRaids.greatVault and NX.DB.dungeonsRaids.greatVault.positionUnlocked)
     end, function(v)
         if NX.Vault and NX.Vault.SetPositionUnlocked then
@@ -5398,28 +5086,6 @@ local function BuildAnchorsControls(category)
         end
     end)
 
-    AddShowAnchorToggle("Utility Alerts", function()
-        return not not (NX.DB.alerts.alertEvents and NX.DB.alerts.alertEvents.positionUnlocked)
-    end, function(v)
-        if NX.AlertEvents and NX.AlertEvents.SetPositionUnlocked then
-            NX.AlertEvents:SetPositionUnlocked(v, true)
-        else
-            NX.DB.alerts.alertEvents = NX.DB.alerts.alertEvents or {}
-            NX.DB.alerts.alertEvents.positionUnlocked = not not v
-        end
-    end)
-
-    AddShowAnchorToggle("Equipment", function()
-        return not not (NX.DB.equipment and NX.DB.equipment.positionUnlocked)
-    end, function(v)
-        if NX.Equipment and NX.Equipment.SetPositionUnlocked then
-            NX.Equipment:SetPositionUnlocked(v, true)
-        else
-            NX.DB.equipment = NX.DB.equipment or {}
-            NX.DB.equipment.positionUnlocked = not not v
-        end
-    end)
-
     AddShowAnchorToggle("Bank Warbound Gear", function()
         return not not (NX.DB.alerts.bankWarboundItems and NX.DB.alerts.bankWarboundItems.positionUnlocked)
     end, function(v)
@@ -5428,20 +5094,6 @@ local function BuildAnchorsControls(category)
         else
             NX.DB.alerts.bankWarboundItems = NX.DB.alerts.bankWarboundItems or {}
             NX.DB.alerts.bankWarboundItems.positionUnlocked = not not v
-        end
-    end)
-
-    AddShowAnchorToggle("New Personal Order Received", function()
-        return not not (NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.newOrderPositionUnlocked)
-    end, function(v)
-        if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.SetNewOrderPositionUnlocked then
-            NX.PersonalCraftingOrders:SetNewOrderPositionUnlocked(v, true)
-        else
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            NX.DB.professions.personalCraftingOrders.newOrderPositionUnlocked = not not v
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
         end
     end)
 
@@ -5486,11 +5138,6 @@ function S:Register()
     local parentCategory = Settings.RegisterCanvasLayoutCategory(landing, "Nexus")
     self.parentCategoryID = parentCategory:GetID()
 
-    local alertsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Alerts")
-    self.alertsCategoryID = alertsCategory:GetID()
-
-    BuildUtilityAlertsControls(alertsCategory)
-
     local automationCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Automation")
     self.automationCategoryID = automationCategory:GetID()
 
@@ -5514,36 +5161,18 @@ function S:Register()
     local combatCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Combat")
     self.combatCategoryID = combatCategory:GetID()
 
-    AddSectionHeader(combatCategory, "Action GCD Streamer")
-    BuildActionGCDStreamerControls(combatCategory)
     AddSectionHeader(combatCategory, "Combat Logging")
     BuildAutoCombatLogControls(combatCategory)
     AddSectionHeader(combatCategory, "Crosshair")
     BuildCrosshairControls(combatCategory)
-    AddSectionHeader(combatCategory, "Floating Combat Text")
-    BuildFloatingCombatTextControls(combatCategory)
     AddSectionHeader(combatCategory, "Mouse Cursor")
     BuildMouseCursorControls(combatCategory)
 
-    local currenciesCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Currency")
-    self.currenciesCategoryID = currenciesCategory:GetID()
-
-    AddSectionHeader(currenciesCategory, "Currency")
-    BuildCurrenciesControls(currenciesCategory)
-
-    local pveCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Dungeons & Raids")
+    local pveCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Great Vault")
     self.pveCategoryID = pveCategory:GetID()
 
-    AddSectionHeader(pveCategory, "Great Vault Loot Spec")
+    AddSectionHeader(pveCategory, "Loot Spec Warning")
     BuildGreatVaultControls(pveCategory)
-    AddSectionHeader(pveCategory, "Mythic+")
-    BuildMythicPlusControls(pveCategory)
-
-    local equipmentCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Equipment")
-    self.equipmentCategoryID = equipmentCategory:GetID()
-
-    AddSectionHeader(equipmentCategory, "Equipment")
-    BuildEquipmentControls(equipmentCategory)
 
     local gameplayCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Gameplay")
     self.gameplayCategoryID = gameplayCategory:GetID()
@@ -5551,12 +5180,11 @@ function S:Register()
     AddSectionHeader(gameplayCategory, "Action Behaviour")
     BuildAutoPlaceSpellsControls(gameplayCategory)
     BuildAutoDismountControls(gameplayCategory)
+    BuildCatalystControls(gameplayCategory)
 
     local interfaceCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Interface")
     self.interfaceCategoryID = interfaceCategory:GetID()
 
-    AddSectionHeader(interfaceCategory, "Clean Names in Instances")
-    BuildCleanNamesInInstancesControls(interfaceCategory)
     AddSectionHeader(interfaceCategory, "Clean Objective Tracker")
     BuildCleanObjectiveTrackerControls(interfaceCategory)
     AddSectionHeader(interfaceCategory, "Low Durability")
@@ -5593,8 +5221,6 @@ function S:Register()
 
     AddSectionHeader(professionsCategory, "Easy Disenchant")
     BuildEasyDisenchantControls(professionsCategory)
-    AddSectionHeader(professionsCategory, "Personal Crafting Orders")
-    BuildPersonalCraftingOrdersControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Simple First Craft Bonus")
     BuildSimpleFirstCraftBonusControls(professionsCategory)
 

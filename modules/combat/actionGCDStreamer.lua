@@ -38,17 +38,17 @@ local function BuildBlacklistSet(list)
 end
 
 local function GetSpellIcon(spellID)
+    if C_Spell and C_Spell.GetSpellTexture then
+        local iconID = C_Spell.GetSpellTexture(spellID)
+        if iconID then
+            return iconID
+        end
+    end
+
     if C_Spell and C_Spell.GetSpellInfo then
         local info = C_Spell.GetSpellInfo(spellID)
         if info and info.iconID then
             return info.iconID
-        end
-    end
-
-    if GetSpellTexture then
-        local ok, icon = pcall(GetSpellTexture, spellID)
-        if ok then
-            return icon
         end
     end
 
