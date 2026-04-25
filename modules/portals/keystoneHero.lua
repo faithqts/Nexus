@@ -148,14 +148,51 @@ local function GetSpellLabel(spellID, fallbackName, fallbackText)
 end
 
 local function GetSpellCooldownCompat(spellID)
-    if C_Spell and C_Spell.GetSpellCooldown then
-        local cd = C_Spell.GetSpellCooldown(spellID)
-        if cd then
-            return cd.startTime, cd.duration, cd.isEnabled
+    if C_Secrets and C_Secrets.ShouldSpellCooldownBeSecret then
+        local ok, isSecret = pcall(C_Secrets.ShouldSpellCooldownBeSecret, spellID)
+        if ok and isSecret then
+            return nil, nil, nil
         end
     end
 
-    return 0, 0, 0
+    if C_Spell and C_Spell.GetSpellCooldown then
+        local cd = C_Spell.GetSpellCooldown(spellID)
+        if cd then
+            return cd.startTime, cd.duration, cd.modRate
+        end
+    end
+
+    return 0, 0, 1
+end
+
+local function ClearCooldownCompat(cooldownFrame)
+    if not cooldownFrame then return end
+
+    if cooldownFrame.Clear then
+        pcall(function()
+            cooldownFrame:Clear()
+        end)
+        return
+    end
+
+    pcall(function()
+        cooldownFrame:SetCooldown(0, 0, 1)
+    end)
+end
+
+local function TrySetCooldownCompat(cooldownFrame, start, duration, modRate)
+    if not cooldownFrame then return false end
+
+    local ok = pcall(function()
+        cooldownFrame:SetCooldown(start, duration, modRate or 1)
+    end)
+
+    if ok then
+        return true
+    end
+
+    ClearCooldownCompat(cooldownFrame)
+    return false
 end
 
 local function BuildNoCombatCastMacro(spellID, spellName)
@@ -518,15 +555,19 @@ function P:UpdateCooldowns()
     for _, btn in ipairs(self.Buttons) do
         local known = btn.spellID and IsSpellKnownForPlayer(btn.spellID)
         if btn:IsShown() and btn.spellID and known then
-            local start, duration = GetSpellCooldownCompat(btn.spellID)
+            local start, duration, modRate = GetSpellCooldownCompat(btn.spellID)
             if start ~= nil and duration ~= nil then
-                btn.Cooldown:SetCooldown(start, duration)
+                local cooldownApplied = TrySetCooldownCompat(btn.Cooldown, start, duration, modRate)
 
                 local hasSpellCooldown = false
-                local ok = pcall(function()
-                    hasSpellCooldown = (start > 0) and (duration > 1.5)
-                end)
-                if not ok then
+                if cooldownApplied then
+                    local ok = pcall(function()
+                        hasSpellCooldown = (start > 0) and (duration > 1.5)
+                    end)
+                    if not ok then
+                        hasSpellCooldown = false
+                    end
+                else
                     hasSpellCooldown = false
                 end
 
@@ -538,21 +579,13 @@ function P:UpdateCooldowns()
                     end
                 end
             else
-                if btn.Cooldown.Clear then
-                    btn.Cooldown:Clear()
-                else
-                    btn.Cooldown:SetCooldown(0, 0)
-                end
+                ClearCooldownCompat(btn.Cooldown)
                 if btn.Text then
                     btn.Text:SetText((btn.entry and btn.entry.text) or "")
                 end
             end
         elseif btn.Cooldown then
-            if btn.Cooldown.Clear then
-                btn.Cooldown:Clear()
-            else
-                btn.Cooldown:SetCooldown(0, 0)
-            end
+            ClearCooldownCompat(btn.Cooldown)
             if btn.Text and btn.entry and btn.entry.text then
                 btn.Text:SetText(btn.entry.text)
             end
