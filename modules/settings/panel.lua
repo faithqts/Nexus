@@ -751,7 +751,7 @@ local function BuildSlashCommandControls(category)
         CreateEnabledDisabledDropdown(
             category,
             setting,
-            "Enables /cd, /cdm, and /wa. Command execution is blocked while in combat."
+            "Enables /cd and /cdm, plus /wa when that alias is not already registered by another addon. Command execution is blocked while in combat."
         )
     end
 

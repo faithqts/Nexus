@@ -4,6 +4,7 @@ local CM = NX.Common
 
 CM._rlRegistered = CM._rlRegistered or false
 CM._rlConflictWarned = CM._rlConflictWarned or false
+CM._waConflictWarned = CM._waConflictWarned or false
 CM._utilitySlashesRegistered = CM._utilitySlashesRegistered or false
 
 local function FindSlashOwner(alias)
@@ -22,6 +23,26 @@ local function FindSlashOwner(alias)
     end
 
     return nil
+end
+
+local function GetSlashOwnerDisplay(owner)
+    if type(owner) ~= "string" or owner == "" then
+        return nil
+    end
+
+    local token = string.match(owner, "^SLASH_(.+)%d+$") or owner
+    token = string.gsub(token, "_", "")
+
+    local shortened = token
+    shortened = string.gsub(shortened, "RELOADUI$", "")
+    shortened = string.gsub(shortened, "RELOAD$", "")
+    shortened = string.gsub(shortened, "RL$", "")
+
+    if shortened == "" then
+        shortened = token
+    end
+
+    return shortened
 end
 
 function CM:GetQuickReloadSlashOwner()
@@ -43,19 +64,7 @@ function CM:GetQuickReloadSlashOwnerDisplay()
         return nil
     end
 
-    local token = string.match(owner, "^SLASH_(.+)%d+$") or owner
-    token = string.gsub(token, "_", "")
-
-    local shortened = token
-    shortened = string.gsub(shortened, "RELOADUI$", "")
-    shortened = string.gsub(shortened, "RELOAD$", "")
-    shortened = string.gsub(shortened, "RL$", "")
-
-    if shortened == "" then
-        shortened = token
-    end
-
-    return shortened
+    return GetSlashOwnerDisplay(owner)
 end
 
 function CM:IsQuickReloadSlashAvailable()
@@ -299,7 +308,17 @@ end
 function CM:RegisterUtilitySlashes()
     if self._utilitySlashesRegistered then return end
 
-    local cdRegistered = RegisterSlashAliases("NEXUS_CD", { "/cd", "/cdm", "/wa" })
+    local cdAliases = { "/cd", "/cdm" }
+    local waOwner = FindSlashOwner("/wa")
+    if not waOwner or string.match(waOwner, "^SLASH_NEXUS_CD%d+$") then
+        table.insert(cdAliases, "/wa")
+    elseif not self._waConflictWarned then
+        self._waConflictWarned = true
+        local ownerLabel = GetSlashOwnerDisplay(waOwner) or waOwner
+        print(string.format("|cffffd200Nexus:|r /wa is already registered by another addon (%s). Nexus will not override it.", ownerLabel))
+    end
+
+    local cdRegistered = RegisterSlashAliases("NEXUS_CD", cdAliases)
     if cdRegistered then
         SlashCmdList["NEXUS_CD"] = function()
             if CM and CM.IsQuickCdmSlashEnabled and not CM:IsQuickCdmSlashEnabled() then
