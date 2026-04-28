@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+set -eu
+
+# Require a root TOC version bump when committing non-TOC changes.
+toc_file=$(ls *.toc 2>/dev/null | head -n1 || true)
+if [ -z "${toc_file}" ]; then
+    exit 0
+fi
+
+staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
+if [ -z "${staged_files}" ]; then
+    exit 0
+fi
+
+has_non_toc=0
+for file in ${staged_files}; do
+    case "${file}" in
+        *.toc) ;;
+        *) has_non_toc=1 ;;
+    esac
+done
+
+if [ "${has_non_toc}" -eq 0 ]; then
+    exit 0
+fi
+
+if ! git diff --cached --name-only -- "${toc_file}" | grep -q .; then
+    echo "ERROR: Non-TOC changes are staged, but ${toc_file} is not staged."
+    echo "       Increment '## Version:' in ${toc_file} and stage it before committing."
+    exit 1
+fi
+
+if ! git diff --cached -- "${toc_file}" | grep -Eq '^[+-]## Version:[[:space:]]*'; then
+    echo "ERROR: ${toc_file} is staged, but its '## Version:' line was not changed."
+    echo "       Increment the version before committing."
+    exit 1
+fi
+
+exit 0

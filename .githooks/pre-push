@@ -1,0 +1,61 @@
+#!/usr/bin/env sh
+set -eu
+
+# Require a root TOC version bump in outgoing history when pushing non-TOC changes.
+toc_file=$(ls *.toc 2>/dev/null | head -n1 || true)
+if [ -z "${toc_file}" ]; then
+    exit 0
+fi
+
+upstream_ref=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || true)
+range=""
+
+if [ -n "${upstream_ref}" ]; then
+    range="${upstream_ref}..HEAD"
+elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+    range="HEAD~1..HEAD"
+else
+    exit 0
+fi
+
+changed_files=$(git diff --name-only ${range} 2>/dev/null || true)
+if [ -z "${changed_files}" ]; then
+    exit 0
+fi
+
+has_non_toc=0
+for file in ${changed_files}; do
+    case "${file}" in
+        *.toc) ;;
+        *) has_non_toc=1 ;;
+    esac
+done
+
+if [ "${has_non_toc}" -eq 0 ]; then
+    exit 0
+fi
+
+if ! git diff --name-only ${range} -- "${toc_file}" | grep -q .; then
+    echo "ERROR: Outgoing commits contain non-TOC changes, but ${toc_file} was not updated."
+    echo "       Increment '## Version:' in ${toc_file} before pushing."
+    exit 1
+fi
+
+if ! git diff ${range} -- "${toc_file}" | grep -Eq '^[+-]## Version:[[:space:]]*'; then
+    echo "ERROR: ${toc_file} changed, but its '## Version:' line was not modified in outgoing commits."
+    echo "       Increment the version before pushing."
+    exit 1
+fi
+
+if [ -n "${upstream_ref}" ]; then
+    old_version=$(git show "${upstream_ref}:${toc_file}" 2>/dev/null | sed -n 's/^## Version:[[:space:]]*//p' | head -n1 || true)
+    new_version=$(sed -n 's/^## Version:[[:space:]]*//p' "${toc_file}" | head -n1 || true)
+
+    if [ -n "${old_version}" ] && [ -n "${new_version}" ] && [ "${old_version}" = "${new_version}" ]; then
+        echo "ERROR: ${toc_file} version is still ${new_version}."
+        echo "       Increment the TOC version before pushing."
+        exit 1
+    fi
+fi
+
+exit 0
