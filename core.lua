@@ -15,6 +15,7 @@ local defaults = {
         options = {
             quickReloadSlash = true,
             quickCdmSlash = true,
+            quickWeakAurasCdmSlash = true,
             quickEditModeSlash = true,
             allowEscCloseCdmEditMode = true,
         },

@@ -4,6 +4,7 @@ local CM = NX.Common
 
 CM._rlRegistered = CM._rlRegistered or false
 CM._rlConflictWarned = CM._rlConflictWarned or false
+CM._waRegistered = CM._waRegistered or false
 CM._waConflictWarned = CM._waConflictWarned or false
 CM._utilitySlashesRegistered = CM._utilitySlashesRegistered or false
 
@@ -157,6 +158,45 @@ function CM:IsQuickCdmSlashEnabled()
     return NX.DB.common.options.quickCdmSlash ~= false
 end
 
+function CM:IsQuickWeakAurasCdmSlashEnabled()
+    if not NX or not NX.DB then return true end
+    return NX.DB.common.options.quickWeakAurasCdmSlash ~= false
+end
+
+function CM:GetWeakAurasCdmSlashOwner()
+    local owner = FindSlashOwner("/wa")
+    if not owner then
+        return nil
+    end
+
+    if string.match(owner, "^SLASH_NEXUS_WA_CDM%d+$") or string.match(owner, "^SLASH_NEXUS_CD%d+$") then
+        return nil
+    end
+
+    return owner
+end
+
+function CM:GetWeakAurasCdmSlashOwnerDisplay()
+    local owner = self:GetWeakAurasCdmSlashOwner()
+    if not owner then
+        return nil
+    end
+
+    return GetSlashOwnerDisplay(owner)
+end
+
+function CM:IsWeakAurasCdmSlashAvailable()
+    return self:GetWeakAurasCdmSlashOwner() == nil
+end
+
+function CM:GetWeakAurasCdmUnavailableTooltip()
+    local owner = self:GetWeakAurasCdmSlashOwnerDisplay() or self:GetWeakAurasCdmSlashOwner()
+    if owner then
+        return string.format("WeakAuras CDM cannot be enabled because /wa is already registered by another addon.", owner)
+    end
+    return "Registers /wa to open Cooldown Manager (CDM)."
+end
+
 function CM:IsQuickEditModeSlashEnabled()
     if not NX or not NX.DB then return true end
     return NX.DB.common.options.quickEditModeSlash ~= false
@@ -283,6 +323,13 @@ local function ToggleCooldownViewerSettings()
     print("|cffffd200Nexus:|r CooldownViewerSettings cannot be toggled on this client.")
 end
 
+local function HandleQuickCdmSlash()
+    if CM and CM.IsQuickCdmSlashEnabled and not CM:IsQuickCdmSlashEnabled() then
+        return
+    end
+    RunOutOfCombat(ToggleCooldownViewerSettings)
+end
+
 local function OpenEditModeManager()
     local frame = _G.EditModeManagerFrame
     if not frame then
@@ -308,25 +355,12 @@ end
 function CM:RegisterUtilitySlashes()
     if self._utilitySlashesRegistered then return end
 
-    local cdAliases = { "/cd", "/cdm" }
-    local waOwner = FindSlashOwner("/wa")
-    if not waOwner or string.match(waOwner, "^SLASH_NEXUS_CD%d+$") then
-        table.insert(cdAliases, "/wa")
-    elseif not self._waConflictWarned then
-        self._waConflictWarned = true
-        local ownerLabel = GetSlashOwnerDisplay(waOwner) or waOwner
-        print(string.format("|cffffd200Nexus:|r /wa is already registered by another addon (%s). Nexus will not override it.", ownerLabel))
+    local cdRegistered = RegisterSlashAliases("NEXUS_CD", { "/cd", "/cdm" })
+    if cdRegistered then
+        SlashCmdList["NEXUS_CD"] = HandleQuickCdmSlash
     end
 
-    local cdRegistered = RegisterSlashAliases("NEXUS_CD", cdAliases)
-    if cdRegistered then
-        SlashCmdList["NEXUS_CD"] = function()
-            if CM and CM.IsQuickCdmSlashEnabled and not CM:IsQuickCdmSlashEnabled() then
-                return
-            end
-            RunOutOfCombat(ToggleCooldownViewerSettings)
-        end
-    end
+    self:SyncWeakAurasCdmSlash()
 
     local emRegistered = RegisterSlashAliases("NEXUS_EDITMODE", { "/em", "/edit", "/editmode", "/editmenu" })
     if emRegistered then
@@ -339,6 +373,48 @@ function CM:RegisterUtilitySlashes()
     end
 
     self._utilitySlashesRegistered = true
+end
+
+function CM:RegisterWeakAurasCdmSlash()
+    if self._waRegistered then return end
+
+    local owner = self:GetWeakAurasCdmSlashOwner()
+    if owner then
+        if NX.DB then
+            NX.DB.common.options.quickWeakAurasCdmSlash = false
+        end
+        if not self._waConflictWarned then
+            self._waConflictWarned = true
+            local ownerLabel = self:GetWeakAurasCdmSlashOwnerDisplay() or owner
+            print(string.format("|cffffd200Nexus:|r /wa is already registered by another addon (%s). WeakAuras CDM not enabled.", ownerLabel))
+        end
+        return
+    end
+
+    RegisterSlashAliases("NEXUS_WA_CDM", { "/wa" })
+    SlashCmdList["NEXUS_WA_CDM"] = HandleQuickCdmSlash
+    self._waRegistered = true
+end
+
+function CM:UnregisterWeakAurasCdmSlash()
+    if not self._waRegistered then return end
+    SlashCmdList["NEXUS_WA_CDM"] = function()
+        print("|cffffd200Nexus:|r WeakAuras CDM (/wa) is disabled in settings.")
+    end
+end
+
+function CM:SyncWeakAurasCdmSlash()
+    if not NX.DB then return end
+
+    if not self:IsWeakAurasCdmSlashAvailable() then
+        NX.DB.common.options.quickWeakAurasCdmSlash = false
+    end
+
+    if self:IsQuickWeakAurasCdmSlashEnabled() then
+        self:RegisterWeakAurasCdmSlash()
+    else
+        self:UnregisterWeakAurasCdmSlash()
+    end
 end
 
 function CM:Init()

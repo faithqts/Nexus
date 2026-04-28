@@ -751,8 +751,84 @@ local function BuildSlashCommandControls(category)
         CreateEnabledDisabledDropdown(
             category,
             setting,
-            "Enables /cd and /cdm, plus /wa when that alias is not already registered by another addon. Command execution is blocked while in combat."
+            "Enables /cd and /cdm. Command execution is blocked while in combat."
         )
+    end
+
+    do
+        local function IsAvailable()
+            if NX.Common and NX.Common.IsWeakAurasCdmSlashAvailable then
+                return NX.Common:IsWeakAurasCdmSlashAvailable()
+            end
+            return true
+        end
+
+        if IsAvailable() then
+            local function GetValue()
+                if not NX.DB then return true end
+                return NX.DB.common.options.quickWeakAurasCdmSlash ~= false
+            end
+
+            local function SetValue(v)
+                NX.DB.common.options.quickWeakAurasCdmSlash = v and true or false
+                if NX.Common and NX.Common.SyncWeakAurasCdmSlash then
+                    NX.Common:SyncWeakAurasCdmSlash()
+                end
+            end
+
+            local setting = Settings.RegisterProxySetting(
+                category,
+                "NEXUS_QUICK_WA_CDM_SLASH",
+                Settings.VarType.Boolean,
+                "WeakAuras CDM (/wa)",
+                true,
+                GetValue,
+                SetValue
+            )
+
+            local tooltip = "Registers /wa to open Cooldown Manager (CDM)."
+            if NX.Common and NX.Common.GetWeakAurasCdmUnavailableTooltip then
+                tooltip = NX.Common:GetWeakAurasCdmUnavailableTooltip()
+            end
+
+            CreateEnabledDisabledDropdown(category, setting, tooltip)
+        else
+            if NX.DB then
+                NX.DB.common.options.quickWeakAurasCdmSlash = false
+            end
+
+            local function GetValue()
+                return "unavailable"
+            end
+
+            local function SetValue(_)
+            end
+
+            local setting = Settings.RegisterProxySetting(
+                category,
+                "NEXUS_QUICK_WA_CDM_SLASH_UNAVAILABLE",
+                Settings.VarType.String,
+                "WeakAuras CDM (/wa)",
+                "unavailable",
+                GetValue,
+                SetValue
+            )
+
+            local function GetUnavailableOptionsData()
+                local owner = (NX.Common and NX.Common.GetWeakAurasCdmSlashOwnerDisplay and NX.Common:GetWeakAurasCdmSlashOwnerDisplay())
+                    or "another addon"
+                local c = Settings.CreateControlTextContainer()
+                c:Add("unavailable", string.format("|cffe73f3fUnavailable. (Registered by %s)|r", owner))
+                return c:GetData()
+            end
+
+            local tooltip = "WeakAuras CDM cannot be enabled because /wa is already registered by another addon."
+            if NX.Common and NX.Common.GetWeakAurasCdmUnavailableTooltip then
+                tooltip = NX.Common:GetWeakAurasCdmUnavailableTooltip()
+            end
+
+            Settings.CreateDropdown(category, setting, GetUnavailableOptionsData, tooltip)
+        end
     end
 
     do
