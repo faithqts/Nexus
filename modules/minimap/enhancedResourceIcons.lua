@@ -3,33 +3,21 @@ NX.MinimapResourceIcons = NX.MinimapResourceIcons or {}
 
 local M = NX.MinimapResourceIcons
 local ADDON = tostring(NX.name or "Nexus")
-local DEFAULT_BLIP_TEXTURE = "Interface\\Minimap\\ObjectIconsAtlas"
-local RESOURCES_ATLAS = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\Resources.tga"
-local RESOURCES_AND_CHESTS_ATLAS = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\ResourcesChests.tga"
-local RESOURCES_AND_SLAYERS_ATLAS = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\ResourcesSlayersRise.tga"
-local ALL_IN_ONE_ATLAS = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\AllInOne.tga"
+local DEFAULT_BLIP_TEXTURE = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\default.blp"
+local ENHANCED_BLIP_TEXTURE = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\enhanced.blp"
 local RELOAD_POPUP_KEY = "NEXUS_RELOAD_ENHANCED_MINIMAP_ICONS"
 
 local MODE_DEFAULT = "default"
-local MODE_RESOURCES = "resources"
-local MODE_RESOURCES_CHESTS = "resources_chests"
-local MODE_RESOURCES_SLAYERS = "resources_slayers"
-local MODE_ALL_IN_ONE = "all_in_one"
+local MODE_ENHANCED = "enhanced"
 
 local MODE_TO_ATLAS = {
     [MODE_DEFAULT] = DEFAULT_BLIP_TEXTURE,
-    [MODE_RESOURCES] = RESOURCES_ATLAS,
-    [MODE_RESOURCES_CHESTS] = RESOURCES_AND_CHESTS_ATLAS,
-    [MODE_RESOURCES_SLAYERS] = RESOURCES_AND_SLAYERS_ATLAS,
-    [MODE_ALL_IN_ONE] = ALL_IN_ONE_ATLAS,
+    [MODE_ENHANCED] = ENHANCED_BLIP_TEXTURE,
 }
 
 local MODE_LABEL = {
-    [MODE_DEFAULT] = "Default (ObjectIconsAtlas)",
-    [MODE_RESOURCES] = "Resources",
-    [MODE_RESOURCES_CHESTS] = "Resources & Chests",
-    [MODE_RESOURCES_SLAYERS] = "Resources & Slayers",
-    [MODE_ALL_IN_ONE] = "All-in-One",
+    [MODE_DEFAULT] = "Default",
+    [MODE_ENHANCED] = "Enhanced",
 }
 
 local frame = nil
@@ -52,33 +40,22 @@ local function NormalizeMode(value)
     text = string.match(text, "^%s*(.-)%s*$") or MODE_DEFAULT
     local compact = string.gsub(text, "[%s%+&%-_]", "")
 
-    if text == MODE_RESOURCES then
-        return MODE_RESOURCES
-    end
-
-    if text == MODE_RESOURCES_CHESTS
+    if text == MODE_ENHANCED
+        or compact == "enhanced"
+        or compact == "resources"
+        or compact == "resource"
         or compact == "resourcesandchests"
         or compact == "resourceschests"
         or compact == "resourcechests"
         or compact == "both"
-    then
-        return MODE_RESOURCES_CHESTS
-    end
-
-    if text == MODE_RESOURCES_SLAYERS
         or compact == "resourcesslayers"
         or compact == "resourceslayers"
         or compact == "resourceslayersrise"
         or compact == "slayers"
         or compact == "slayersrise"
-    then
-        return MODE_RESOURCES_SLAYERS
-    end
-
-    if text == MODE_ALL_IN_ONE
         or compact == "allinone"
     then
-        return MODE_ALL_IN_ONE
+        return MODE_ENHANCED
     end
 
     return MODE_DEFAULT
@@ -111,7 +88,7 @@ function M:EnsureDB()
 
     if db.enhancedResourceIconsMode == nil then
         local legacyEnabled = IsLegacyEnabled(db.enhancedResourceIconsEnabled)
-        db.enhancedResourceIconsMode = legacyEnabled and MODE_RESOURCES or MODE_DEFAULT
+        db.enhancedResourceIconsMode = legacyEnabled and MODE_ENHANCED or MODE_DEFAULT
     end
 
     db.enhancedResourceIconsMode = NormalizeMode(db.enhancedResourceIconsMode)
@@ -173,7 +150,7 @@ end
 
 function M:SetEnabled(enabled, showReloadPrompt)
     if enabled then
-        return self:SetMode(MODE_RESOURCES, showReloadPrompt)
+        return self:SetMode(MODE_ENHANCED, showReloadPrompt)
     end
 
     return self:SetMode(MODE_DEFAULT, showReloadPrompt)
@@ -191,44 +168,32 @@ function M:HandleNxSlash(msg)
     local db = self:EnsureDB()
 
     if text == "" or text == "toggle" then
-        local nextMode = (NormalizeMode(db.enhancedResourceIconsMode) == MODE_DEFAULT) and MODE_RESOURCES or MODE_DEFAULT
+        local nextMode = (NormalizeMode(db.enhancedResourceIconsMode) == MODE_DEFAULT) and MODE_ENHANCED or MODE_DEFAULT
         local mode = self:SetMode(nextMode, true)
         print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
         return true
     end
 
     if text == "on" or text == "enable" or text == "enabled" then
-        local mode = self:SetMode(MODE_RESOURCES, true)
+        local mode = self:SetMode(MODE_ENHANCED, true)
         print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
         return true
     end
 
-    if text == "resources" or text == "resource" then
-        local mode = self:SetMode(MODE_RESOURCES, true)
-        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
-        return true
-    end
-
-    if text == MODE_RESOURCES_CHESTS or compact == "resourceschests" or compact == "resourcechests" or compact == "both" then
-        local mode = self:SetMode(MODE_RESOURCES_CHESTS, true)
-        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
-        return true
-    end
-
-    if text == MODE_RESOURCES_SLAYERS
+    if text == MODE_ENHANCED
+        or text == "resources"
+        or text == "resource"
+        or compact == "resourceschests"
+        or compact == "resourcechests"
+        or compact == "both"
         or compact == "resourcesslayers"
         or compact == "resourceslayers"
         or compact == "resourceslayersrise"
         or compact == "slayers"
         or compact == "slayersrise"
+        or compact == "allinone"
     then
-        local mode = self:SetMode(MODE_RESOURCES_SLAYERS, true)
-        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
-        return true
-    end
-
-    if text == MODE_ALL_IN_ONE or compact == "allinone" then
-        local mode = self:SetMode(MODE_ALL_IN_ONE, true)
+        local mode = self:SetMode(MODE_ENHANCED, true)
         print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
         return true
     end
@@ -245,12 +210,12 @@ function M:HandleNxSlash(msg)
     end
 
     if text == "help" or text == "?" then
-        print("|cffffd200Nexus:|r /nx resourceicons [default|resources|resourceschests|resourcesslayers|allinone|on|off|toggle|status]")
-        print("|cffffd200Nexus:|r /nx minimap resources [default|resources|resourceschests|resourcesslayers|allinone|on|off|toggle|status]")
+        print("|cffffd200Nexus:|r /nx resourceicons [default|enhanced|on|off|toggle|status]")
+        print("|cffffd200Nexus:|r /nx minimap resources [default|enhanced|on|off|toggle|status]")
         return true
     end
 
-    print("|cffffd200Nexus:|r Usage: /nx resourceicons [default|resources|resourceschests|resourcesslayers|allinone|on|off|toggle|status]")
+    print("|cffffd200Nexus:|r Usage: /nx resourceicons [default|enhanced|on|off|toggle|status]")
     return true
 end
 
