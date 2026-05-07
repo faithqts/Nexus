@@ -5,7 +5,7 @@
 ## Category: Quality of Life
 ## X-Category: Quality of Life
 ## Author: Faith
-## Version: 1.0.4
+## Version: 1.0.5
 ## SavedVariables: NexusDB
 ## OptionalDeps: LibSharedMedia-3.0
 
@@ -18,10 +18,8 @@ core.lua
 modules/functions/functions.lua
 modules/automation/achievementScreenshot.lua
 modules/automation/cinematics.lua
-modules/combat/autoCombatLog.lua
 modules/combat/crosshair.lua
 modules/combat/cursor.lua
-modules/combat/assistedRotationOverlay.lua
 modules/combat/extraActionArtwork.lua
 modules/common/slashCmds.lua
 modules/dungeonsRaids/greatVault.lua

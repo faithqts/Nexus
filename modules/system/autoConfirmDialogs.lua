@@ -23,18 +23,42 @@ local function ShouldAutoConfirm(which)
     return false
 end
 
+local function GetPreferredButtonIndex(which)
+    if which == "REPLACE_ENCHANT" then
+        return 2
+    end
+
+    return 1
+end
+
+local function GetPopupButton(frame, index)
+    if not frame or not index then
+        return nil
+    end
+
+    local btn = frame["button" .. tostring(index)] or (frame.GetButton and frame:GetButton(index))
+    if btn then
+        return btn
+    end
+
+    if frame.GetName then
+        local name = frame:GetName()
+        if name and name ~= "" then
+            return _G[string.format("%sButton%d", name, index)]
+        end
+    end
+
+    return nil
+end
+
 local function HandleAutoConfirmDialog(frame)
     if not frame or not frame.which then return end
     if not ShouldAutoConfirm(frame.which) then return end
 
-    local preferredIndex = 1
-    if frame.which == "REPLACE_ENCHANT" then
-        preferredIndex = 2
-    end
-
-    local btn = frame["button" .. tostring(preferredIndex)] or (frame.GetButton and frame:GetButton(preferredIndex))
+    local preferredIndex = GetPreferredButtonIndex(frame.which)
+    local btn = GetPopupButton(frame, preferredIndex)
     if not btn then
-        btn = frame.button1 or (frame.GetButton and frame:GetButton(1))
+        btn = GetPopupButton(frame, 1)
     end
 
     if btn and btn.Click then

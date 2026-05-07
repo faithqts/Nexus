@@ -50,11 +50,7 @@ local defaults = {
     automation = {
         achievementScreenshot = {
             enabled = false,
-            delaySeconds = 1.5,
-        },
-        autoCombatLog = {
-            enabled = false,
-            stopDelaySeconds = 30,
+            delaySeconds = 0.5,
         },
         cinematics = {
             autoSkip = false,
@@ -85,9 +81,6 @@ local defaults = {
             pulseSpeedHz = 2.2,
             flashSpeedHz = 4.0,
             rotateRps = 0.5,
-        },
-        assistedRotationOverlay = {
-            enabled = false,
         },
         extraActionArtwork = {
             enabled = false,
@@ -137,7 +130,7 @@ local defaults = {
             zoomoutEnabled = false,
             zoomoutDelaySeconds = 3,
             zoomoutTargetZoom = 0,
-            enhancedResourceIconsEnabled = false,
+            enhancedResourceIconsMode = "default",
         },
         clickableBuffs = {
             enabled = false,
@@ -165,6 +158,7 @@ local defaults = {
         },
         tutorials = {
             disabled = false,
+            hideMicroMenuPopups = false,
         },
         hideScreenshotStatus = {
             enabled = false,
@@ -545,9 +539,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.AchievementScreenshot and NX.AchievementScreenshot.Init then
             NX.AchievementScreenshot:Init()
         end
-        if NX.AutoCombatLog and NX.AutoCombatLog.Init then
-            NX.AutoCombatLog:Init()
-        end
         if NX.MouseCursor and NX.MouseCursor.Init then
             NX.MouseCursor:Init()
         end
@@ -578,9 +569,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.CVarStateSync and NX.CVarStateSync.Init then
             NX.CVarStateSync:Init()
-        end
-        if NX.AssistedRotationOverlay and NX.AssistedRotationOverlay.Init then
-            NX.AssistedRotationOverlay:Init()
         end
         if NX.ExtraActionArtwork and NX.ExtraActionArtwork.Init then
             NX.ExtraActionArtwork:Init()

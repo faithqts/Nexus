@@ -75,7 +75,7 @@ end
 function CM:GetQuickReloadUnavailableTooltip()
     local owner = self:GetQuickReloadSlashOwnerDisplay() or self:GetQuickReloadSlashOwner()
     if owner then
-        return string.format("Quick ReloadUI cannot be enabled because /rl is already registered by another addon.", owner)
+        return string.format("Quick ReloadUI cannot be enabled because /rl is already registered by %s.", owner)
     end
     return "Registers /rl to reload the UI (same as /console reloadui)."
 end
@@ -103,7 +103,7 @@ function CM:RegisterQuickReloadSlash()
         if not self._rlConflictWarned then
             self._rlConflictWarned = true
             local ownerLabel = self:GetQuickReloadSlashOwnerDisplay() or owner
-            print(string.format("|cffffd200Nexus:|r /rl is already registered by another addon. Quick ReloadUI not enabled.", ownerLabel))
+            print(string.format("|cffffd200Nexus:|r /rl is already registered by %s. Quick ReloadUI not enabled.", ownerLabel))
         end
         return
     end
@@ -192,7 +192,7 @@ end
 function CM:GetWeakAurasCdmUnavailableTooltip()
     local owner = self:GetWeakAurasCdmSlashOwnerDisplay() or self:GetWeakAurasCdmSlashOwner()
     if owner then
-        return string.format("WeakAuras CDM cannot be enabled because /wa is already registered by another addon.", owner)
+        return string.format("WeakAuras CDM cannot be enabled because /wa is already registered by %s.", owner)
     end
     return "Registers /wa to open Cooldown Manager (CDM)."
 end

@@ -4,10 +4,60 @@ NX.MinimapResourceIcons = NX.MinimapResourceIcons or {}
 local M = NX.MinimapResourceIcons
 local ADDON = tostring(NX.name or "Nexus")
 local DEFAULT_BLIP_TEXTURE = "Interface\\Minimap\\ObjectIcons"
-local CUSTOM_ATLAS = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\AtlasReplacement"
+local RESOURCES_ATLAS = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\AtlasReplacementResources.tga"
+local RESOURCES_AND_CHESTS_ATLAS = "Interface\\AddOns\\" .. ADDON .. "\\media\\textures\\minimap\\AtlasReplacementResourcesChests.tga"
 local RELOAD_POPUP_KEY = "NEXUS_RELOAD_ENHANCED_MINIMAP_ICONS"
 
+local MODE_DEFAULT = "default"
+local MODE_RESOURCES = "resources"
+local MODE_RESOURCES_CHESTS = "resources_chests"
+
+local MODE_TO_ATLAS = {
+    [MODE_DEFAULT] = DEFAULT_BLIP_TEXTURE,
+    [MODE_RESOURCES] = RESOURCES_ATLAS,
+    [MODE_RESOURCES_CHESTS] = RESOURCES_AND_CHESTS_ATLAS,
+}
+
+local MODE_LABEL = {
+    [MODE_DEFAULT] = "Default (none)",
+    [MODE_RESOURCES] = "Resources",
+    [MODE_RESOURCES_CHESTS] = "Resources & Chests",
+}
+
 local frame = nil
+
+local function IsLegacyEnabled(value)
+    if value == true or value == 1 then
+        return true
+    end
+
+    if type(value) == "string" then
+        local text = string.lower(string.match(value, "^%s*(.-)%s*$") or "")
+        return text == "1" or text == "true"
+    end
+
+    return false
+end
+
+local function NormalizeMode(value)
+    local text = string.lower(tostring(value or MODE_DEFAULT))
+    text = string.match(text, "^%s*(.-)%s*$") or MODE_DEFAULT
+
+    if text == MODE_RESOURCES then
+        return MODE_RESOURCES
+    end
+
+    if text == MODE_RESOURCES_CHESTS
+        or text == "resourcesandchests"
+        or text == "resourceschests"
+        or text == "resourcechests"
+        or text == "both"
+    then
+        return MODE_RESOURCES_CHESTS
+    end
+
+    return MODE_DEFAULT
+end
 
 if StaticPopupDialogs and not StaticPopupDialogs[RELOAD_POPUP_KEY] then
     StaticPopupDialogs[RELOAD_POPUP_KEY] = {
@@ -33,9 +83,26 @@ end
 function M:EnsureDB()
     NX.DB.interface.minimap = NX.DB.interface.minimap or {}
     local db = NX.DB.interface.minimap
-    if db.enhancedResourceIconsEnabled == nil then db.enhancedResourceIconsEnabled = false end
-    db.enhancedResourceIconsEnabled = db.enhancedResourceIconsEnabled and true or false
+
+    if db.enhancedResourceIconsMode == nil then
+        local legacyEnabled = IsLegacyEnabled(db.enhancedResourceIconsEnabled)
+        db.enhancedResourceIconsMode = legacyEnabled and MODE_RESOURCES or MODE_DEFAULT
+    end
+
+    db.enhancedResourceIconsMode = NormalizeMode(db.enhancedResourceIconsMode)
+    db.enhancedResourceIconsEnabled = db.enhancedResourceIconsMode ~= MODE_DEFAULT
+
     return db
+end
+
+function M:GetMode()
+    local db = self:EnsureDB()
+    return db.enhancedResourceIconsMode
+end
+
+function M:GetModeLabel(mode)
+    mode = NormalizeMode(mode)
+    return MODE_LABEL[mode] or MODE_LABEL[MODE_DEFAULT]
 end
 
 function M:ApplyAtlas(tex)
@@ -50,10 +117,9 @@ end
 
 function M:ApplyIfEnabled()
     local db = self:EnsureDB()
-    if not db.enhancedResourceIconsEnabled then
-        return
-    end
-    self:ApplyAtlas(CUSTOM_ATLAS)
+    local mode = NormalizeMode(db.enhancedResourceIconsMode)
+    local atlas = MODE_TO_ATLAS[mode] or DEFAULT_BLIP_TEXTURE
+    self:ApplyAtlas(atlas)
 end
 
 function M:ShowReloadPrompt()
@@ -64,66 +130,84 @@ function M:ShowReloadPrompt()
     end
 end
 
-function M:SetEnabled(enabled, showReloadPrompt)
+function M:SetMode(mode, showReloadPrompt)
     local db = self:EnsureDB()
-    local oldValue = db.enhancedResourceIconsEnabled == true
-    local newValue = enabled and true or false
+    local oldMode = NormalizeMode(db.enhancedResourceIconsMode)
+    local newMode = NormalizeMode(mode)
 
-    db.enhancedResourceIconsEnabled = newValue
+    db.enhancedResourceIconsMode = newMode
+    db.enhancedResourceIconsEnabled = newMode ~= MODE_DEFAULT
     self:OnSettingsChanged()
 
-    if showReloadPrompt and (not oldValue) and newValue then
+    if showReloadPrompt and oldMode ~= newMode and newMode ~= MODE_DEFAULT then
         self:ShowReloadPrompt()
     end
 
-    return newValue
+    return newMode
+end
+
+function M:SetEnabled(enabled, showReloadPrompt)
+    if enabled then
+        return self:SetMode(MODE_RESOURCES, showReloadPrompt)
+    end
+
+    return self:SetMode(MODE_DEFAULT, showReloadPrompt)
 end
 
 function M:OnSettingsChanged()
-    local db = self:EnsureDB()
-    if db.enhancedResourceIconsEnabled then
-        self:ApplyAtlas(CUSTOM_ATLAS)
-    else
-        self:ApplyDefaultAtlas()
-    end
+    self:ApplyIfEnabled()
 end
 
 function M:HandleNxSlash(msg)
     local text = string.lower(tostring(msg or ""))
     text = string.match(text, "^%s*(.-)%s*$") or ""
+    local compact = string.gsub(text, "[%s%+&%-_]", "")
 
     local db = self:EnsureDB()
 
     if text == "" or text == "toggle" then
-        local enabled = self:SetEnabled(not db.enhancedResourceIconsEnabled, true)
-        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons " .. (enabled and "enabled." or "disabled."))
+        local nextMode = (NormalizeMode(db.enhancedResourceIconsMode) == MODE_DEFAULT) and MODE_RESOURCES or MODE_DEFAULT
+        local mode = self:SetMode(nextMode, true)
+        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
         return true
     end
 
     if text == "on" or text == "enable" or text == "enabled" then
-        self:SetEnabled(true, true)
-        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons enabled.")
+        local mode = self:SetMode(MODE_RESOURCES, true)
+        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
         return true
     end
 
-    if text == "off" or text == "disable" or text == "disabled" then
-        self:SetEnabled(false, false)
-        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons disabled.")
+    if text == "resources" or text == "resource" then
+        local mode = self:SetMode(MODE_RESOURCES, true)
+        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
+        return true
+    end
+
+    if text == MODE_RESOURCES_CHESTS or compact == "resourceschests" or compact == "resourcechests" or compact == "both" then
+        local mode = self:SetMode(MODE_RESOURCES_CHESTS, true)
+        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
+        return true
+    end
+
+    if text == "default" or text == "none" or text == "off" or text == "disable" or text == "disabled" then
+        local mode = self:SetMode(MODE_DEFAULT, false)
+        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(mode) .. ".")
         return true
     end
 
     if text == "status" then
-        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons " .. (db.enhancedResourceIconsEnabled and "enabled." or "disabled."))
+        print("|cffffd200Nexus:|r Minimap Enhanced Resource Icons mode: " .. self:GetModeLabel(db.enhancedResourceIconsMode) .. ".")
         return true
     end
 
     if text == "help" or text == "?" then
-        print("|cffffd200Nexus:|r /nx resourceicons [on|off|toggle|status]")
-        print("|cffffd200Nexus:|r /nx minimap resources [on|off|toggle|status]")
+        print("|cffffd200Nexus:|r /nx resourceicons [default|resources|resourceschests|on|off|toggle|status]")
+        print("|cffffd200Nexus:|r /nx minimap resources [default|resources|resourceschests|on|off|toggle|status]")
         return true
     end
 
-    print("|cffffd200Nexus:|r Usage: /nx resourceicons [on|off|toggle|status]")
+    print("|cffffd200Nexus:|r Usage: /nx resourceicons [default|resources|resourceschests|on|off|toggle|status]")
     return true
 end
 

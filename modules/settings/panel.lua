@@ -305,7 +305,7 @@ local function CreateLandingPanel()
     local clickableBuffsBody = CreateBodyLine(clickableBuffsHeader, "Out-of-combat buff buttons, flashing, icon/text sizing, zoom, and anchor controls.")
 
     local combatHeader = CreateHeaderLine(clickableBuffsBody, "Combat:")
-    local combatBody = CreateBodyLine(combatHeader, "Auto Combat Log, Crosshair, mouse cursor, and assisted rotation overlay controls.")
+    local combatBody = CreateBodyLine(combatHeader, "Crosshair and mouse cursor controls.")
 
     local dungeonsHeader = CreateHeaderLine(combatBody, "Great Vault:")
     local dungeonsBody = CreateBodyLine(dungeonsHeader, "Great Vault loot spec warning settings and anchor controls.")
@@ -715,7 +715,7 @@ local function BuildSlashCommandControls(category)
                 local owner = (NX.Common and NX.Common.GetQuickReloadSlashOwnerDisplay and NX.Common:GetQuickReloadSlashOwnerDisplay())
                     or "another addon"
                 local c = Settings.CreateControlTextContainer()
-                c:Add("unavailable", string.format("|cffe73f3fUnavailable. (Registered by %s)|r", owner))
+                c:Add("unavailable", string.format("|cffe73f3fUnavailable (Registered by %s)|r", owner))
                 return c:GetData()
             end
 
@@ -818,7 +818,7 @@ local function BuildSlashCommandControls(category)
                 local owner = (NX.Common and NX.Common.GetWeakAurasCdmSlashOwnerDisplay and NX.Common:GetWeakAurasCdmSlashOwnerDisplay())
                     or "another addon"
                 local c = Settings.CreateControlTextContainer()
-                c:Add("unavailable", string.format("|cffe73f3fUnavailable. (Registered by %s)|r", owner))
+                c:Add("unavailable", string.format("|cffe73f3fUnavailable (Registered by %s)|r", owner))
                 return c:GetData()
             end
 
@@ -1833,395 +1833,6 @@ local function BuildAchievementScreenshotControls(category)
 
 end
 
-local function BuildAutoCombatLogControls(category)
-    do
-        local function GetValue()
-            return not not (NX.DB.automation.autoCombatLog and NX.DB.automation.autoCombatLog.enabled)
-        end
-
-        local function SetValue(v)
-            NX.DB.automation.autoCombatLog = NX.DB.automation.autoCombatLog or {}
-            NX.DB.automation.autoCombatLog.enabled = not not v
-            if NX.AutoCombatLog and NX.AutoCombatLog.OnSettingsChanged then
-                NX.AutoCombatLog:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_AUTO_COMBATLOG_ENABLED",
-            Settings.VarType.Boolean,
-            "Auto Combat Log",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Automatically starts combat logging in dungeons, raids, arenas, and battlegrounds plus encounter/challenge events.")
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.automation.autoCombatLog and NX.DB.automation.autoCombatLog.stopDelaySeconds) or 30
-        end
-
-        local function SetValue(v)
-            NX.DB.automation.autoCombatLog = NX.DB.automation.autoCombatLog or {}
-            NX.DB.automation.autoCombatLog.stopDelaySeconds = tonumber(v) or 30
-            if NX.AutoCombatLog and NX.AutoCombatLog.OnSettingsChanged then
-                NX.AutoCombatLog:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_AUTO_COMBATLOG_STOPDELAY",
-            Settings.VarType.Number,
-            "Combat Log Stop Delay",
-            30,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0, 60, 1)
-        ApplyRightLabel(options, function(value) return string.format("%ds", value) end)
-        Settings.CreateSlider(category, setting, options, "Controls how long to wait after combat ends before auto-disabling combat logging.")
-    end
-end
-
-local function BuildActionGCDStreamerControls(category)
-    do
-        local function GetValue()
-            return not not (NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.enabled)
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            NX.DB.combat.actionGCDStreamer.enabled = not not v
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_ENABLED",
-            Settings.VarType.Boolean,
-            "Enabled",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Shows recent successful player casts as fading icons.")
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.duration) or 7.5
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            local n = tonumber(v) or 7.5
-            if n < 0.1 then n = 0.1 end
-            if n > 30 then n = 30 end
-            NX.DB.combat.actionGCDStreamer.duration = n
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_DURATION",
-            Settings.VarType.Number,
-            "Duration",
-            7.5,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0.1, 30, 0.1)
-        ApplyRightLabel(options, function(value) return string.format("%.1fs", value) end)
-        Settings.CreateSlider(category, setting, options, "How long each cast icon remains visible before fading out.")
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.limit) or 7
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            local n = math.floor((tonumber(v) or 7) + 0.5)
-            if n < 1 then n = 1 end
-            if n > 20 then n = 20 end
-            NX.DB.combat.actionGCDStreamer.limit = n
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_LIMIT",
-            Settings.VarType.Number,
-            "Icon Limit",
-            7,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(1, 20, 1)
-        ApplyRightLabel(options, function(value) return string.format("%d", value) end)
-        Settings.CreateSlider(category, setting, options, "Maximum number of recent cast icons shown at once.")
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.iconSize) or 30
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            local n = math.floor((tonumber(v) or 30) + 0.5)
-            if n < 16 then n = 16 end
-            if n > 96 then n = 96 end
-            NX.DB.combat.actionGCDStreamer.iconSize = n
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_ICON_SIZE",
-            Settings.VarType.Number,
-            "Icon Size",
-            30,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(16, 96, 1)
-        ApplyRightLabel(options, function(value) return string.format("%dpx", value) end)
-        Settings.CreateSlider(category, setting, options, "Size of each cast icon in pixels.")
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.iconZoomPct) or 10
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            local n = math.floor((tonumber(v) or 10) + 0.5)
-            if n < 0 then n = 0 end
-            if n > 100 then n = 100 end
-            NX.DB.combat.actionGCDStreamer.iconZoomPct = n
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_ICON_ZOOM_PCT",
-            Settings.VarType.Number,
-            "Icon Zoom",
-            10,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0, 100, 1)
-        ApplyRightLabel(options, function(value) return string.format("%d%%", value) end)
-        Settings.CreateSlider(category, setting, options, "Zooms into each cast icon by cropping edges.")
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.spacing) or 1
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            local n = math.floor((tonumber(v) or 1) + 0.5)
-            if n < 0 then n = 0 end
-            if n > 20 then n = 20 end
-            NX.DB.combat.actionGCDStreamer.spacing = n
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_SPACING",
-            Settings.VarType.Number,
-            "Icon Spacing",
-            1,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0, 20, 1)
-        ApplyRightLabel(options, function(value) return string.format("%dpx", value) end)
-        Settings.CreateSlider(category, setting, options, "Spacing between cast icons in pixels.")
-    end
-
-    do
-        local function GetDirectionOptionsData()
-            local c = Settings.CreateControlTextContainer()
-            c:Add("UP", "Up")
-            c:Add("DOWN", "Down")
-            c:Add("LEFT", "Left")
-            c:Add("RIGHT", "Right")
-            return c:GetData()
-        end
-
-        local function GetValue()
-            local value = NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.growthDirection
-            value = string.upper(tostring(value or "LEFT"))
-            if value ~= "UP" and value ~= "DOWN" and value ~= "LEFT" and value ~= "RIGHT" then
-                value = "LEFT"
-            end
-            return value
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            local value = string.upper(tostring(v or "LEFT"))
-            if value ~= "UP" and value ~= "DOWN" and value ~= "LEFT" and value ~= "RIGHT" then
-                value = "LEFT"
-            end
-            NX.DB.combat.actionGCDStreamer.growthDirection = value
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_GROWTH_DIRECTION",
-            Settings.VarType.String,
-            "Growth Direction",
-            "LEFT",
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(category, setting, GetDirectionOptionsData, "Changes the direction in which cast icons grow.")
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.tooltipOnMouseover)
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            NX.DB.combat.actionGCDStreamer.tooltipOnMouseover = not not v
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_TOOLTIP_MOUSEOVER",
-            Settings.VarType.Boolean,
-            "Tooltip on Mouseover",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Shows a spell tooltip when mousing over a GCD stream icon.")
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.showLastCastMS)
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            NX.DB.combat.actionGCDStreamer.showLastCastMS = not not v
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_SHOW_LAST_CAST_MS",
-            Settings.VarType.Boolean,
-            "Show Last Cast MS",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Shows elapsed time from the previous cast as text like 100ms. The first icon in the stream does not show this.")
-    end
-
-    do
-        local function GetValue()
-            return tonumber(NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.showLastCastMSFontSize) or 12
-        end
-
-        local function SetValue(v)
-            NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-            local n = math.floor((tonumber(v) or 12) + 0.5)
-            if n < 8 then n = 8 end
-            if n > 32 then n = 32 end
-            NX.DB.combat.actionGCDStreamer.showLastCastMSFontSize = n
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                NX.ActionGCDStreamer:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ACTION_GCD_STREAMER_SHOW_LAST_CAST_MS_FONT_SIZE",
-            Settings.VarType.Number,
-            "Last Cast MS Font Size",
-            12,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(8, 32, 1)
-        ApplyRightLabel(options, function(value) return string.format("%dpx", value) end)
-        Settings.CreateSlider(category, setting, options, "Font size for the last-cast ms text shown on each icon.")
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.combat.actionGCDStreamer and NX.DB.combat.actionGCDStreamer.positionUnlocked)
-        end
-
-        local function SetValue(v)
-            if NX.ActionGCDStreamer and NX.ActionGCDStreamer.SetPositionUnlocked then
-                NX.ActionGCDStreamer:SetPositionUnlocked(v, true)
-            else
-                NX.DB.combat.actionGCDStreamer = NX.DB.combat.actionGCDStreamer or {}
-                NX.DB.combat.actionGCDStreamer.positionUnlocked = not not v
-                if NX.ActionGCDStreamer and NX.ActionGCDStreamer.OnSettingsChanged then
-                    NX.ActionGCDStreamer:OnSettingsChanged()
-                end
-            end
-        end
-
-        CreateToggleActionButton(category, "Show Anchor", function()
-            SetValue(not GetValue())
-        end)
-    end
-end
-
 local function BuildAlwaysSharpenControls(category)
     do
         local function GetValue()
@@ -2565,74 +2176,6 @@ local function BuildCatalystControls(category)
     )
 end
 
-local function BuildFloatingCombatTextControls(category)
-    do
-        local function GetValue() return not (not not (NX.DB.combat.floatingCombatText and NX.DB.combat.floatingCombatText.hideOverPlayer)) end
-        local function SetValue(v)
-            NX.DB.combat.floatingCombatText = NX.DB.combat.floatingCombatText or {}
-            NX.DB.combat.floatingCombatText.hideOverPlayer = not v
-            if NX.FloatingCombatText and NX.FloatingCombatText.OnSettingsChanged then NX.FloatingCombatText:OnSettingsChanged() end
-        end
-        local setting = Settings.RegisterProxySetting(category, "NEXUS_FCT_HIDE_OVER_PLAYER", Settings.VarType.Boolean, "Enable Player", true, GetValue, SetValue)
-        CreateEnabledDisabledDropdown(category, setting, "Shows damage/healing hit indicator text above your character.")
-    end
-
-    do
-        local function GetValue() return not (not not (NX.DB.combat.floatingCombatText and NX.DB.combat.floatingCombatText.hideOverPet)) end
-        local function SetValue(v)
-            NX.DB.combat.floatingCombatText = NX.DB.combat.floatingCombatText or {}
-            NX.DB.combat.floatingCombatText.hideOverPet = not v
-            if NX.FloatingCombatText and NX.FloatingCombatText.OnSettingsChanged then NX.FloatingCombatText:OnSettingsChanged() end
-        end
-        local setting = Settings.RegisterProxySetting(category, "NEXUS_FCT_HIDE_OVER_PET", Settings.VarType.Boolean, "Enable Pet", true, GetValue, SetValue)
-        CreateEnabledDisabledDropdown(category, setting, "Shows damage/healing hit indicator text above your pet.")
-    end
-
-    local function MakeToggle(proxyKey, dbKey, label, tooltip)
-        local function GetValue() return not not (NX.DB.combat.floatingCombatText and NX.DB.combat.floatingCombatText[dbKey]) end
-        local function SetValue(v)
-            NX.DB.combat.floatingCombatText = NX.DB.combat.floatingCombatText or {}
-            NX.DB.combat.floatingCombatText[dbKey] = not not v
-            if NX.FloatingCombatText and NX.FloatingCombatText.OnSettingsChanged then NX.FloatingCombatText:OnSettingsChanged() end
-        end
-        local setting = Settings.RegisterProxySetting(category, proxyKey, Settings.VarType.Boolean, label, false, GetValue, SetValue)
-        CreateEnabledDisabledDropdown(category, setting, tooltip)
-    end
-
-    MakeToggle("NEXUS_FCT_SHOW_DAMAGE", "showCombatDamage", "Combat Damage", "Controls floatingCombatTextCombatDamage_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_HEALING", "showCombatHealing", "Combat Healing", "Controls floatingCombatTextCombatHealing_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_FRIENDLY_HEALERS", "showFriendlyHealers", "Friendly Healers", "Controls floatingCombatTextFriendlyHealers_v2.")
-
-    AddSectionHeader(category, "Floating Combat Text - Events")
-    MakeToggle("NEXUS_FCT_SHOW_HEAL_ABSORB_SELF", "showHealingAbsorbSelf", "Self Healing Absorbs", "Controls floatingCombatTextCombatHealingAbsorbSelf_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_HEAL_ABSORB_TARGET", "showHealingAbsorbTarget", "Target Healing Absorbs", "Controls floatingCombatTextCombatHealingAbsorbTarget_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_COMBAT_STATE", "showCombatState", "Combat State", "Controls floatingCombatTextCombatState_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_COMBO_POINTS", "showComboPoints", "Combo Points", "Controls floatingCombatTextComboPoints_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_DAMAGE_REDUCTION", "showDamageReduction", "Damage Reduction", "Controls floatingCombatTextDamageReduction_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_DODGE_PARRY_MISS", "showDodgeParryMiss", "Dodge, Parry, and Miss", "Controls floatingCombatTextDodgeParryMiss_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_ENERGY_GAINS", "showEnergyGains", "Energy Gains", "Controls floatingCombatTextEnergyGains_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_FLOAT_MODE", "showFloatMode", "Floating Text Mode v2", "Controls floatingCombatTextFloatMode_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_HONOR_GAINS", "showHonorGains", "Honor Gains", "Controls floatingCombatTextHonorGains_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_LOW_MANA_HEALTH", "showLowManaHealth", "Low Mana/Health", "Controls floatingCombatTextLowManaHealth_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_PERIODIC_ENERGY", "showPeriodicEnergyGains", "Periodic Energy Gains", "Controls floatingCombatTextPeriodicEnergyGains_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_PET_MELEE", "showPetMeleeDamage", "Pet Melee Damage", "Controls floatingCombatTextPetMeleeDamage_v2.")
-    MakeToggle("NEXUS_FCT_SHOW_PET_SPELL", "showPetSpellDamage", "Pet Spell Damage", "Controls floatingCombatTextPetSpellDamage_v2.")
-end
-
-local function BuildAssistedRotationOverlayControls(category)
-    local function GetValue() return not not (NX.DB.combat.assistedRotationOverlay and NX.DB.combat.assistedRotationOverlay.enabled) end
-    local function SetValue(v)
-        NX.DB.combat.assistedRotationOverlay = NX.DB.combat.assistedRotationOverlay or {}
-        NX.DB.combat.assistedRotationOverlay.enabled = not not v
-        if NX.AssistedRotationOverlay and NX.AssistedRotationOverlay.OnSettingsChanged then
-            NX.AssistedRotationOverlay:OnSettingsChanged()
-        end
-    end
-
-    local setting = Settings.RegisterProxySetting(category, "NEXUS_ASSISTED_OVERLAY_HIDE", Settings.VarType.Boolean, "Hide Assisted Combat Rotation overlay", false, GetValue, SetValue)
-    CreateEnabledDisabledDropdown(category, setting, "Hides the Assisted Combat Rotation helper glow/overlay on action buttons.")
-end
-
 local function BuildExtraActionArtworkControls(category)
     local function GetValue() return not not (NX.DB.combat.extraActionArtwork and NX.DB.combat.extraActionArtwork.enabled) end
     local function SetValue(v)
@@ -2659,6 +2202,36 @@ local function BuildHideTalkingHeadControls(category)
 
     local setting = Settings.RegisterProxySetting(category, "NEXUS_HIDE_TALKING_HEAD", Settings.VarType.Boolean, "Automatically hide Talking Head Frame", false, GetValue, SetValue)
     CreateEnabledDisabledDropdown(category, setting, "Hides the Talking Head frame whenever it tries to show.")
+end
+
+local function BuildHideMicroMenuPopupsControls(category)
+    local function GetValue()
+        return not not (NX.DB.system.tutorials and NX.DB.system.tutorials.hideMicroMenuPopups)
+    end
+
+    local function SetValue(v)
+        NX.DB.system.tutorials = NX.DB.system.tutorials or {}
+        NX.DB.system.tutorials.hideMicroMenuPopups = not not v
+        if NX.Tutorials and NX.Tutorials.OnSettingsChanged then
+            NX.Tutorials:OnSettingsChanged()
+        end
+    end
+
+    local setting = Settings.RegisterProxySetting(
+        category,
+        "NEXUS_HIDE_MICROMENU_POPUPS",
+        Settings.VarType.Boolean,
+        "Hide Micro-Menu Popups",
+        false,
+        GetValue,
+        SetValue
+    )
+
+    CreateEnabledDisabledDropdown(
+        category,
+        setting,
+        "When Enabled, sets hideHelptips to 0. When Disabled, restores hideHelptips to 1."
+    )
 end
 
 local function BuildLuaErrorsControls(category)
@@ -2830,349 +2403,6 @@ local function BuildSimpleFirstCraftBonusControls(category)
     )
 
     CreateEnabledDisabledDropdown(category, setting, "Shows a first-craft icon beside eligible profession recipes.")
-end
-
-local function BuildPersonalCraftingOrdersControls(category)
-    AddSectionHeader(category, "Current Personal Crafting Orders")
-
-    do
-        local function GetValue()
-            return not not (NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.textAlertEnabled)
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            NX.DB.professions.personalCraftingOrders.textAlertEnabled = not not v
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_TEXT_ENABLED",
-            Settings.VarType.Boolean,
-            "Enable",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Shows personal crafting order count beneath the Professions tab system.")
-    end
-
-    do
-        local function GetValue()
-            return math.floor((tonumber(NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.currentOrdersFontSize) or 20) + 0.5)
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            local n = math.floor((tonumber(v) or 20) + 0.5)
-            if n < 8 then n = 8 end
-            if n > 96 then n = 96 end
-            NX.DB.professions.personalCraftingOrders.currentOrdersFontSize = n
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_CURRENT_FONT_SIZE",
-            Settings.VarType.Number,
-            "Font Size",
-            20,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(8, 96, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, setting, options, "Font size for Current Personal Orders text (uses addon font family).")
-    end
-
-    do
-        local function GetValue()
-            local db = NX.DB.professions.personalCraftingOrders or {}
-            return NormalizeSharedHexColor(db.currentOrdersColor or "#FFFFFF", "#FFFFFF")
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            NX.DB.professions.personalCraftingOrders.currentOrdersColor = NormalizeSharedHexColor(v, "#FFFFFF")
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_CURRENT_COLOR",
-            Settings.VarType.String,
-            "Font Colour",
-            "#FFFFFF",
-            GetValue,
-            SetValue
-        )
-
-        CreateSharedFontColorDropdown(category, setting, "Selects the font colour for Current Personal Orders text. Each option previews its colour.")
-    end
-
-    AddSectionHeader(category, "New Personal Crafting Order Received")
-
-    do
-        local function GetValue()
-            return not not (NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.newOrderAlertEnabled)
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            NX.DB.professions.personalCraftingOrders.newOrderAlertEnabled = not not v
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_NEW_ORDER_ENABLED",
-            Settings.VarType.Boolean,
-            "Enable",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Enables or disables the New Personal Order Received alert text and sound trigger.")
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.soundAlertEnabled)
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            NX.DB.professions.personalCraftingOrders.soundAlertEnabled = not not v
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_SOUND_ENABLED",
-            Settings.VarType.Boolean,
-            "Enable Sound",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Enables or disables the voice pack audio for New Personal Crafting Order Received alerts.")
-    end
-
-    do
-        local function PlayTestSound()
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.PlayAlertSound then
-                local played = NX.PersonalCraftingOrders:PlayAlertSound()
-                if not played then
-                    print("|cffffd200Nexus:|r Personal Crafting Orders sound is disabled.")
-                end
-            end
-        end
-
-        if Settings and Settings.CreateButton then
-            local ok = pcall(Settings.CreateButton, category, "Test Sound", "Play", PlayTestSound, "Plays the currently selected sound alert for Personal Crafting Orders.", true)
-            if not ok then
-                CreateToggleActionButton(category, "Test Sound", PlayTestSound, "Plays the currently selected sound alert for Personal Crafting Orders.")
-            end
-        else
-            CreateToggleActionButton(category, "Test Sound", PlayTestSound, "Plays the currently selected sound alert for Personal Crafting Orders.")
-        end
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.newOrderPositionUnlocked)
-        end
-
-        local function SetValue(v)
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.SetNewOrderPositionUnlocked then
-                NX.PersonalCraftingOrders:SetNewOrderPositionUnlocked(v, true)
-            else
-                NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-                NX.DB.professions.personalCraftingOrders.newOrderPositionUnlocked = not not v
-                if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                    NX.PersonalCraftingOrders:OnSettingsChanged()
-                end
-            end
-        end
-
-        CreateToggleActionButton(category, "Show Anchor", function()
-            SetValue(not GetValue())
-        end, "Shows or hides the drag anchor for New Personal Order Received text.")
-    end
-
-    do
-        local function GetAlignmentOptionsData()
-            local c = Settings.CreateControlTextContainer()
-            c:Add("LEFT", "Left")
-            c:Add("CENTER", "Center")
-            c:Add("RIGHT", "Right")
-            return c:GetData()
-        end
-
-        local function GetValue()
-            local db = NX.DB.professions.personalCraftingOrders or {}
-            local value = string.upper(tostring(db.newOrderAlignment or "CENTER"))
-            if value ~= "LEFT" and value ~= "CENTER" and value ~= "RIGHT" then
-                value = "CENTER"
-            end
-            return value
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            local value = string.upper(tostring(v or "CENTER"))
-            if value ~= "LEFT" and value ~= "CENTER" and value ~= "RIGHT" then
-                value = "CENTER"
-            end
-            NX.DB.professions.personalCraftingOrders.newOrderAlignment = value
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_NEW_ORDER_ALIGNMENT",
-            Settings.VarType.String,
-            "New Order Text Alignment",
-            "CENTER",
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(category, setting, GetAlignmentOptionsData, "Sets the alignment for New Personal Order Received text.")
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue()
-            return math.floor((tonumber(NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.newOrderFontSize) or 28) + 0.5)
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            local n = math.floor((tonumber(v) or 28) + 0.5)
-            if n < 8 then n = 8 end
-            if n > 96 then n = 96 end
-            NX.DB.professions.personalCraftingOrders.newOrderFontSize = n
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_NEW_ORDER_FONT_SIZE",
-            Settings.VarType.Number,
-            "New Order Font Size",
-            28,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(8, 96, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, setting, options, "Controls font size for New Personal Order Received text.")
-    end
-
-    do
-        local function GetValue()
-            local db = NX.DB.professions.personalCraftingOrders or {}
-            return NormalizeSharedHexColor(db.newOrderColor or "#FFD133", "#FFD133")
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            NX.DB.professions.personalCraftingOrders.newOrderColor = NormalizeSharedHexColor(v, "#FFD133")
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_NEW_ORDER_COLOR",
-            Settings.VarType.String,
-            "New Order Font Colour",
-            "#FFD133",
-            GetValue,
-            SetValue
-        )
-
-        CreateSharedFontColorDropdown(category, setting, "Selects the font colour for New Personal Order Received text.")
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.newOrderFlashing)
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            NX.DB.professions.personalCraftingOrders.newOrderFlashing = not not v
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_NEW_ORDER_FLASHING",
-            Settings.VarType.Boolean,
-            "New Order Flashing",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Enable or disable flashing for New Personal Order Received text.")
-    end
-
-    do
-        local function GetValue()
-            return math.floor((tonumber(NX.DB.professions.personalCraftingOrders and NX.DB.professions.personalCraftingOrders.newOrderDuration) or 4) + 0.5)
-        end
-
-        local function SetValue(v)
-            NX.DB.professions.personalCraftingOrders = NX.DB.professions.personalCraftingOrders or {}
-            local n = math.floor((tonumber(v) or 4) + 0.5)
-            if n < 1 then n = 1 end
-            if n > 30 then n = 30 end
-            NX.DB.professions.personalCraftingOrders.newOrderDuration = n
-            if NX.PersonalCraftingOrders and NX.PersonalCraftingOrders.OnSettingsChanged then
-                NX.PersonalCraftingOrders:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_PERSONAL_CRAFTING_ORDERS_NEW_ORDER_DURATION",
-            Settings.VarType.Number,
-            "New Order Duration",
-            4,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(1, 30, 1)
-        ApplyRightLabel(options, function(v) return string.format("%ds", v) end)
-        Settings.CreateSlider(category, setting, options, "How long New Personal Order Received text stays visible.")
-    end
 end
 
 local function BuildEasyDisenchantControls(category)
@@ -3402,462 +2632,6 @@ local function BuildEasyDisenchantControls(category)
             return string.format("%d%%", v)
         end)
         Settings.CreateSlider(category, setting, options, "Crops the icon inward to mimic zoom.")
-    end
-end
-
-local function BuildUtilityAlertsControls(category)
-    local EVENT_ROWS = {
-        { key = "FEAST", label = "Feast" },
-        { key = "POTION_CAULDRON", label = "Potion Cauldron" },
-        { key = "FLASK_CAULDRON", label = "Flask Cauldron" },
-        { key = "JEEVES", label = "Jeeves" },
-        { key = "MAILBOX", label = "Mailbox" },
-        { key = "AUTO_HAMMER", label = "Auto-Hammer" },
-        { key = "SOULWELL", label = "Soulwell" },
-        { key = "MAGE_TABLE", label = "Mage Table" },
-    }
-
-    local function EnsureDB()
-        NX.DB.alerts.alertEvents = NX.DB.alerts.alertEvents or {}
-        local db = NX.DB.alerts.alertEvents
-        db.events = db.events or {}
-        db.voicePack = NormalizeVoicePackActor(db.voicePack or GetSharedVoicePackActor())
-        if db.soundEnabled == nil then
-            db.soundEnabled = true
-        end
-        db.soundEnabled = db.soundEnabled and true or false
-
-        for _, row in ipairs(EVENT_ROWS) do
-            db.events[row.key] = db.events[row.key] or {}
-            local eventCfg = db.events[row.key]
-            if eventCfg.enabled == nil then
-                eventCfg.enabled = true
-            end
-            if eventCfg.flashing == nil then
-                eventCfg.flashing = false
-            end
-            eventCfg.enabled = eventCfg.enabled and true or false
-            eventCfg.flashing = eventCfg.flashing and true or false
-        end
-
-        return db
-    end
-
-    local function NotifyChanged()
-        if NX.AlertEvents and NX.AlertEvents.OnSettingsChanged then
-            NX.AlertEvents:OnSettingsChanged()
-        end
-    end
-
-    AddSectionHeader(category, "Settings")
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return db.enabled ~= false
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.enabled = v and true or false
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ALERT_EVENTS_ENABLED",
-            Settings.VarType.Boolean,
-            "Enabled",
-            true,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Enable or disable Utility Alerts for feasts, cauldrons, mailbox, repairs, soulwell, and mage table.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return db.soundEnabled ~= false
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.soundEnabled = v and true or false
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ALERT_EVENTS_SOUND_ENABLED",
-            Settings.VarType.Boolean,
-            "Sounds",
-            true,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Enable or disable all Utility Alerts sounds.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.textSize) or 28
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            local n = math.floor((tonumber(v) or 28) + 0.5)
-            if n < 8 then n = 8 end
-            if n > 96 then n = 96 end
-            db.textSize = n
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ALERT_EVENTS_TEXT_SIZE",
-            Settings.VarType.Number,
-            "Text Size",
-            28,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(8, 96, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, setting, options, "Sets the Utility Alerts text size.")
-    end
-
-    do
-        local function GetAlignmentOptionsData()
-            local c = Settings.CreateControlTextContainer()
-            c:Add("LEFT", "Left")
-            c:Add("CENTER", "Center")
-            c:Add("RIGHT", "Right")
-            return c:GetData()
-        end
-
-        local function GetValue()
-            local db = EnsureDB()
-            local value = string.upper(tostring(db.align or "CENTER"))
-            if value ~= "LEFT" and value ~= "CENTER" and value ~= "RIGHT" then
-                value = "CENTER"
-            end
-            return value
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            local value = string.upper(tostring(v or "CENTER"))
-            if value ~= "LEFT" and value ~= "CENTER" and value ~= "RIGHT" then
-                value = "CENTER"
-            end
-            db.align = value
-            NotifyChanged()
-            if NX.Equipment and NX.Equipment.RefreshDisplayStyle then
-                NX.Equipment:RefreshDisplayStyle()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ALERT_EVENTS_ALIGN",
-            Settings.VarType.String,
-            "Text Alignment",
-            "CENTER",
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(category, setting, GetAlignmentOptionsData, "Sets alert text alignment.")
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.duration) or 3
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            local n = math.floor((tonumber(v) or 3) + 0.5)
-            if n < 1 then n = 1 end
-            if n > 10 then n = 10 end
-            db.duration = n
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ALERT_EVENTS_DURATION",
-            Settings.VarType.Number,
-            "Alert Duration",
-            3,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(1, 10, 1)
-        ApplyRightLabel(options, function(v) return string.format("%ds", v) end)
-        Settings.CreateSlider(category, setting, options, "Sets how long each alert stays visible.")
-    end
-
-    do
-        local function GetGrowOptionsData()
-            local c = Settings.CreateControlTextContainer()
-            c:Add("UP", "Up")
-            c:Add("DOWN", "Down")
-            return c:GetData()
-        end
-
-        local function GetValue()
-            local db = EnsureDB()
-            local value = string.upper(tostring(db.grow or "UP"))
-            if value ~= "UP" and value ~= "DOWN" then
-                value = "UP"
-            end
-            return value
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            local value = string.upper(tostring(v or "UP"))
-            if value ~= "UP" and value ~= "DOWN" then
-                value = "UP"
-            end
-            db.grow = value
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ALERT_EVENTS_GROW",
-            Settings.VarType.String,
-            "Text Growth Direction",
-            "UP",
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(category, setting, GetGrowOptionsData, "Changes whether new alerts stack upward or downward.")
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.alerts.alertEvents and NX.DB.alerts.alertEvents.positionUnlocked)
-        end
-
-        local function SetValue(v)
-            if NX.AlertEvents and NX.AlertEvents.SetPositionUnlocked then
-                NX.AlertEvents:SetPositionUnlocked(v, true)
-            else
-                NX.DB.alerts.alertEvents = NX.DB.alerts.alertEvents or {}
-                NX.DB.alerts.alertEvents.positionUnlocked = not not v
-                if NX.AlertEvents and NX.AlertEvents.OnSettingsChanged then
-                    NX.AlertEvents:OnSettingsChanged()
-                end
-            end
-        end
-
-        CreateToggleActionButton(category, "Show Anchor", function()
-            SetValue(not GetValue())
-        end)
-    end
-
-    do
-        local function RunTest()
-            if NX.AlertEvents and NX.AlertEvents.TestAlerts then
-                NX.AlertEvents:TestAlerts()
-            end
-        end
-
-        if Settings and Settings.CreateButton then
-            local ok = pcall(Settings.CreateButton, category, "Test Alerts", "Run", RunTest, "Shows sample Utility Alerts so you can preview size, alignment, growth, and sounds.", true)
-            if not ok then
-                CreateToggleActionButton(category, "Test Alerts", RunTest, "Shows sample Utility Alerts so you can preview size, alignment, growth, and sounds.")
-            end
-        else
-            CreateToggleActionButton(category, "Test Alerts", RunTest, "Shows sample Utility Alerts so you can preview size, alignment, growth, and sounds.")
-        end
-    end
-
-    AddSectionHeader(category, "Events")
-
-    for _, row in ipairs(EVENT_ROWS) do
-        do
-            local function GetValue()
-                local db = EnsureDB()
-                local eventCfg = db.events and db.events[row.key]
-                return eventCfg and eventCfg.enabled == true or false
-            end
-
-            local function SetValue(v)
-                local db = EnsureDB()
-                db.events[row.key].enabled = v and true or false
-                NotifyChanged()
-            end
-
-            local setting = Settings.RegisterProxySetting(
-                category,
-                "NEXUS_ALERT_EVENTS_EVENT_ENABLED_" .. row.key,
-                Settings.VarType.Boolean,
-                row.label,
-                true,
-                GetValue,
-                SetValue
-            )
-
-            CreateEnabledDisabledDropdown(category, setting, "Enable or disable the " .. row.label .. " alert event.")
-        end
-
-        do
-            local function GetValue()
-                local db = EnsureDB()
-                local eventCfg = db.events and db.events[row.key]
-                return eventCfg and eventCfg.flashing == true or false
-            end
-
-            local function SetValue(v)
-                local db = EnsureDB()
-                db.events[row.key].flashing = v and true or false
-                NotifyChanged()
-            end
-
-            local setting = Settings.RegisterProxySetting(
-                category,
-                "NEXUS_ALERT_EVENTS_EVENT_FLASHING_" .. row.key,
-                Settings.VarType.Boolean,
-                row.label .. " Flashing",
-                false,
-                GetValue,
-                SetValue
-            )
-
-            CreateEnabledDisabledDropdown(category, setting, "Enable or disable flashing text for the " .. row.label .. " alert.")
-        end
-
-    end
-
-end
-
-local function BuildCurrenciesControls(category)
-    do
-        local function GetValue()
-            return not not (NX.DB.system.currencies and NX.DB.system.currencies.enabled)
-        end
-
-        local function SetValue(v)
-            NX.DB.system.currencies = NX.DB.system.currencies or {}
-            NX.DB.system.currencies.enabled = not not v
-            if NX.Currencies and NX.Currencies.OnSettingsChanged then
-                NX.Currencies:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_CURRENCIES_ENABLED",
-            Settings.VarType.Boolean,
-            "Currencies",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Show or hide tracked currencies next to the character frame.")
-    end
-
-    do
-        local options = Settings.CreateSliderOptions(50, 200, 5)
-        ApplyRightLabel(options, function(v)
-            return string.format("%d%%", v)
-        end)
-
-        local percentSetting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_CURRENCIES_SCALE_PCT",
-            Settings.VarType.Number,
-            "Scale",
-            100,
-            function()
-                local s = tonumber(NX.DB.system.currencies and NX.DB.system.currencies.scale) or 1.0
-                return math.floor((s * 100) + 0.5)
-            end,
-            function(v)
-                v = tonumber(v) or 100
-                if v < 50 then v = 50 end
-                if v > 200 then v = 200 end
-                NX.DB.system.currencies = NX.DB.system.currencies or {}
-                NX.DB.system.currencies.scale = v / 100
-                if NX.Currencies and NX.Currencies.OnSettingsChanged then
-                    NX.Currencies:OnSettingsChanged()
-                end
-            end
-        )
-
-        Settings.CreateSlider(category, percentSetting, options, "Adjusts the currency tracker scale.")
-    end
-
-    do
-        local function GetValue()
-            return not not (NX.DB.system.currencies and NX.DB.system.currencies.showBackground)
-        end
-
-        local function SetValue(v)
-            NX.DB.system.currencies = NX.DB.system.currencies or {}
-            NX.DB.system.currencies.showBackground = not not v
-            if NX.Currencies and NX.Currencies.OnSettingsChanged then
-                NX.Currencies:OnSettingsChanged()
-            end
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_CURRENCIES_BACKGROUND",
-            Settings.VarType.Boolean,
-            "Background",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Show or hide the tracker background.")
-    end
-
-    do
-        local options = Settings.CreateSliderOptions(8, 32, 1)
-        ApplyRightLabel(options, function(v)
-            return string.format("%dpx", v)
-        end)
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_CURRENCIES_FONT_SIZE",
-            Settings.VarType.Number,
-            "Font Size",
-            12,
-            function()
-                return math.floor((tonumber(NX.DB.system.currencies and NX.DB.system.currencies.fontSize) or 12) + 0.5)
-            end,
-            function(v)
-                v = tonumber(v) or 12
-                v = math.floor(v + 0.5)
-                if v < 8 then v = 8 end
-                if v > 32 then v = 32 end
-                NX.DB.system.currencies = NX.DB.system.currencies or {}
-                NX.DB.system.currencies.fontSize = v
-                if NX.Currencies and NX.Currencies.OnSettingsChanged then
-                    NX.Currencies:OnSettingsChanged()
-                end
-            end
-        )
-
-        Settings.CreateSlider(category, setting, options, "Adjusts the currency tracker font size.")
     end
 end
 
@@ -4458,84 +3232,6 @@ local function BuildWaypointTrackingControls(category)
     end
 end
 
-local function BuildCleanNamesInInstancesControls(category)
-    local function EnsureDB()
-        NX.DB.system.cleanNamesInInstances = NX.DB.system.cleanNamesInInstances or {}
-        local db = NX.DB.system.cleanNamesInInstances
-        if db.enabled == nil then
-            db.enabled = false
-        end
-        if db.unitNameNPC == nil then
-            if C_CVar and C_CVar.GetCVar then
-                local ok, value = pcall(C_CVar.GetCVar, "UnitNameNPC")
-                if ok then
-                    db.unitNameNPC = (value == "1" or value == true)
-                end
-            end
-            if db.unitNameNPC == nil then
-                db.unitNameNPC = true
-            end
-        end
-        return db
-    end
-
-    local function NotifyChanged()
-        if NX.CleanNamesInInstances and NX.CleanNamesInInstances.OnSettingsChanged then
-            NX.CleanNamesInInstances:OnSettingsChanged()
-        end
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return db.enabled == true
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.enabled = v and true or false
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_CLEAN_NAMES_ENABLED",
-            Settings.VarType.Boolean,
-            "Clean Names in Instances",
-            false,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Applies default name cleanup CVars in instances and restores them outside instances.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return db.unitNameNPC == true
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.unitNameNPC = v and true or false
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_CLEAN_NAMES_UNITNAMENPC",
-            Settings.VarType.Boolean,
-            "Show NPC Names",
-            true,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Keeps UnitNameNPC synchronized with client/server updates and addon changes.")
-    end
-end
-
 local function BuildMinimapControls(category)
     local function EnsureDB()
         NX.DB.interface.minimap = NX.DB.interface.minimap or {}
@@ -4642,10 +3338,35 @@ local function BuildMinimapControls(category)
 end
 
 local function BuildMinimapEnhancedResourceIconsControls(category)
+    local function IsLegacyEnabled(value)
+        if value == true or value == 1 then
+            return true
+        end
+
+        if type(value) == "string" then
+            local text = string.lower(string.match(value, "^%s*(.-)%s*$") or "")
+            return text == "1" or text == "true"
+        end
+
+        return false
+    end
+
     local function EnsureDB()
         NX.DB.interface.minimap = NX.DB.interface.minimap or {}
         local db = NX.DB.interface.minimap
-        if db.enhancedResourceIconsEnabled == nil then db.enhancedResourceIconsEnabled = false end
+
+        if db.enhancedResourceIconsMode == nil then
+            local legacyEnabled = IsLegacyEnabled(db.enhancedResourceIconsEnabled)
+            db.enhancedResourceIconsMode = legacyEnabled and "resources" or "default"
+        end
+
+        local mode = string.lower(tostring(db.enhancedResourceIconsMode or "default"))
+        if mode ~= "resources" and mode ~= "resources_chests" then
+            mode = "default"
+        end
+        db.enhancedResourceIconsMode = mode
+        db.enhancedResourceIconsEnabled = mode ~= "default"
+
         return db
     end
 
@@ -4656,32 +3377,51 @@ local function BuildMinimapEnhancedResourceIconsControls(category)
     end
 
     do
+        local function GetModeOptionsData()
+            local c = Settings.CreateControlTextContainer()
+            c:Add("default", "Default (none)")
+            c:Add("resources", "Resources")
+            c:Add("resources_chests", "Resources & Chests")
+            return c:GetData()
+        end
+
         local function GetValue()
             local db = EnsureDB()
-            return db.enhancedResourceIconsEnabled == true
+            return db.enhancedResourceIconsMode
         end
 
         local function SetValue(v)
-            if NX.MinimapResourceIcons and NX.MinimapResourceIcons.SetEnabled then
-                NX.MinimapResourceIcons:SetEnabled(v and true or false, true)
+            if NX.MinimapResourceIcons and NX.MinimapResourceIcons.SetMode then
+                NX.MinimapResourceIcons:SetMode(v, true)
             else
                 local db = EnsureDB()
-                db.enhancedResourceIconsEnabled = v and true or false
+                local mode = string.lower(tostring(v or "default"))
+                if mode ~= "resources" and mode ~= "resources_chests" then
+                    mode = "default"
+                end
+                db.enhancedResourceIconsMode = mode
+                db.enhancedResourceIconsEnabled = mode ~= "default"
                 NotifyChanged()
             end
         end
 
         local setting = Settings.RegisterProxySetting(
             category,
-            "NEXUS_MINIMAP_ENHANCED_RESOURCE_ICONS_ENABLED",
-            Settings.VarType.Boolean,
+            "NEXUS_MINIMAP_ENHANCED_RESOURCE_ICONS_MODE",
+            Settings.VarType.String,
             "Enhanced Resource Icons",
-            false,
+            "default",
             GetValue,
             SetValue
         )
 
-        CreateBooleanCheckboxControl(category, setting, "Replaces minimap resource icons with a custom atlas texture.")
+        local init = Settings.CreateDropdown(
+            category,
+            setting,
+            GetModeOptionsData,
+            "Select which custom minimap icon atlas to use: none, Resources, or Resources & Chests."
+        )
+        init.reinitializeOnValueChanged = true
     end
 end
 
@@ -5237,8 +3977,6 @@ function S:Register()
     local combatCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Combat")
     self.combatCategoryID = combatCategory:GetID()
 
-    AddSectionHeader(combatCategory, "Combat Logging")
-    BuildAutoCombatLogControls(combatCategory)
     AddSectionHeader(combatCategory, "Crosshair")
     BuildCrosshairControls(combatCategory)
     AddSectionHeader(combatCategory, "Mouse Cursor")
@@ -5271,8 +4009,8 @@ function S:Register()
     BuildSkyridingEffectsControls(interfaceCategory)
     BuildAlwaysSharpenControls(interfaceCategory)
     BuildExtraActionArtworkControls(interfaceCategory)
-    BuildAssistedRotationOverlayControls(interfaceCategory)
     BuildHideTalkingHeadControls(interfaceCategory)
+    BuildHideMicroMenuPopupsControls(interfaceCategory)
     BuildScreenshotStatusControls(interfaceCategory)
     BuildQuestTrackerStateControls(interfaceCategory)
 
