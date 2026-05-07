@@ -3351,6 +3351,41 @@ local function BuildMinimapEnhancedResourceIconsControls(category)
         return false
     end
 
+    local function NormalizeMode(value)
+        local text = string.lower(tostring(value or "default"))
+        text = string.match(text, "^%s*(.-)%s*$") or "default"
+        local compact = string.gsub(text, "[%s%+&%-_]", "")
+
+        if text == "resources" then
+            return "resources"
+        end
+
+        if text == "resources_chests"
+            or compact == "resourcesandchests"
+            or compact == "resourceschests"
+            or compact == "resourcechests"
+            or compact == "both"
+        then
+            return "resources_chests"
+        end
+
+        if text == "resources_slayers"
+            or compact == "resourcesslayers"
+            or compact == "resourceslayers"
+            or compact == "resourceslayersrise"
+            or compact == "slayers"
+            or compact == "slayersrise"
+        then
+            return "resources_slayers"
+        end
+
+        if text == "all_in_one" or compact == "allinone" then
+            return "all_in_one"
+        end
+
+        return "default"
+    end
+
     local function EnsureDB()
         NX.DB.interface.minimap = NX.DB.interface.minimap or {}
         local db = NX.DB.interface.minimap
@@ -3360,10 +3395,7 @@ local function BuildMinimapEnhancedResourceIconsControls(category)
             db.enhancedResourceIconsMode = legacyEnabled and "resources" or "default"
         end
 
-        local mode = string.lower(tostring(db.enhancedResourceIconsMode or "default"))
-        if mode ~= "resources" and mode ~= "resources_chests" then
-            mode = "default"
-        end
+        local mode = NormalizeMode(db.enhancedResourceIconsMode)
         db.enhancedResourceIconsMode = mode
         db.enhancedResourceIconsEnabled = mode ~= "default"
 
@@ -3379,9 +3411,11 @@ local function BuildMinimapEnhancedResourceIconsControls(category)
     do
         local function GetModeOptionsData()
             local c = Settings.CreateControlTextContainer()
-            c:Add("default", "Default (none)")
+            c:Add("default", "Default (ObjectIconsAtlas)")
             c:Add("resources", "Resources")
             c:Add("resources_chests", "Resources & Chests")
+            c:Add("resources_slayers", "Resources & Slayers")
+            c:Add("all_in_one", "All-in-One")
             return c:GetData()
         end
 
@@ -3395,10 +3429,7 @@ local function BuildMinimapEnhancedResourceIconsControls(category)
                 NX.MinimapResourceIcons:SetMode(v, true)
             else
                 local db = EnsureDB()
-                local mode = string.lower(tostring(v or "default"))
-                if mode ~= "resources" and mode ~= "resources_chests" then
-                    mode = "default"
-                end
+                local mode = NormalizeMode(v)
                 db.enhancedResourceIconsMode = mode
                 db.enhancedResourceIconsEnabled = mode ~= "default"
                 NotifyChanged()
@@ -3419,7 +3450,7 @@ local function BuildMinimapEnhancedResourceIconsControls(category)
             category,
             setting,
             GetModeOptionsData,
-            "Select which custom minimap icon atlas to use: none, Resources, or Resources & Chests."
+            "Select which minimap icon atlas to use: ObjectIconsAtlas (default), Resources, Resources & Chests, Resources & Slayers, or All-in-One."
         )
         init.reinitializeOnValueChanged = true
     end
