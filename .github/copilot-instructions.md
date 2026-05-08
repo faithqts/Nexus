@@ -34,6 +34,12 @@ The workflows are tightly coupled through shared TOC parsing rules and tag forma
 - Treat TOC version updates as mandatory for any non-TOC code change.
 - Before commit: if non-TOC files are staged, stage the root TOC file with an updated `## Version:` value.
 - Before push: verify outgoing commits include that TOC version bump.
+- When generating a commit/push on request, include a `Release Notes:` section in the commit message body with plain bullet lines only (no `Item 1:` labels), for example:
+  - `- Updated TOC`
+  - `- Updated Workflow`
+  - `- Added New Module "Auto Withdraw Treatise"`
+- Use real newline characters in commit bodies; do not use literal `\n` or PowerShell escape text like `` `n``.
+- In PowerShell, prefer creating a temporary commit message file and using `git commit -F <file>` to preserve multi-line formatting reliably.
 
 ## TOC Guard Hooks
 
