@@ -209,6 +209,12 @@ local defaults = {
                 color = { 0, 0, 0, 1 },
             },
         },
+        enchantingVellum = {
+            enabled = true,
+            iconSize = 36,
+            anchorOffsetX = 0,
+            anchorOffsetY = 0,
+        },
         autoWithdrawTreatise = {
             enabled = false,
         },
@@ -611,6 +617,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.EasyDisenchant and NX.EasyDisenchant.Init then
             NX.EasyDisenchant:Init()
+        end
+        if NX.EnchantingVellum and NX.EnchantingVellum.Init then
+            NX.EnchantingVellum:Init()
         end
         if NX.AutoWithdrawTreatise and NX.AutoWithdrawTreatise.Init then
             NX.AutoWithdrawTreatise:Init()

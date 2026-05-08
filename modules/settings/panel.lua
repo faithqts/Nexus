@@ -323,7 +323,7 @@ local function CreateLandingPanel()
     local portalsBody = CreateBodyLine(portalsHeader, "Portal bar visibility, legacy portal filtering, layout sizing, spacing, and anchor positioning.")
 
     local professionsHeader = CreateHeaderLine(portalsBody, "Professions:")
-    local professionsBody = CreateBodyLine(professionsHeader, "Simple First Craft Bonus, Easy Disenchant, and Auto Withdraw Treatise controls.")
+    local professionsBody = CreateBodyLine(professionsHeader, "Simple First Craft Bonus, Easy Disenchant, Enchanting Vellum, and Auto Withdraw Treatise controls.")
 
     local settingsAnchorsHeader = CreateHeaderLine(professionsBody, "Settings & Anchors:")
     local settingsAnchorsBody = CreateBodyLine(settingsAnchorsHeader, "Shared addon settings, LUA errors, slash command toggles, and unified anchor toggles.")
@@ -2435,6 +2435,142 @@ local function BuildAutoWithdrawTreatiseControls(category)
     )
 end
 
+local function BuildEnchantingVellumControls(category)
+    local function EnsureDB()
+        NX.DB.professions.enchantingVellum = NX.DB.professions.enchantingVellum or {}
+        local db = NX.DB.professions.enchantingVellum
+        if db.enabled == nil then db.enabled = true end
+        if db.iconSize == nil then db.iconSize = 36 end
+        if db.anchorOffsetX == nil then db.anchorOffsetX = 0 end
+        if db.anchorOffsetY == nil then db.anchorOffsetY = 0 end
+        return db
+    end
+
+    local function NotifyChanged()
+        if NX.EnchantingVellum and NX.EnchantingVellum.OnSettingsChanged then
+            NX.EnchantingVellum:OnSettingsChanged()
+        end
+    end
+
+    local function GetValue()
+        local db = EnsureDB()
+        return db.enabled == true
+    end
+
+    local function SetValue(v)
+        local db = EnsureDB()
+        db.enabled = not not v
+        NotifyChanged()
+    end
+
+    local setting = Settings.RegisterProxySetting(
+        category,
+        "NEXUS_ENCHANTING_VELLUM_ENABLED",
+        Settings.VarType.Boolean,
+        "Enabled",
+        true,
+        GetValue,
+        SetValue
+    )
+
+    CreateEnabledDisabledDropdown(
+        category,
+        setting,
+        "Adds an Enchant Vellum action button to the enchanting crafting page that crafts and applies a vellum in one click when valid."
+    )
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.iconSize) or 36
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            local size = math.floor((tonumber(v) or 36) + 0.5)
+            if size < 24 then size = 24 end
+            if size > 48 then size = 48 end
+            size = math.floor((size / 2) + 0.5) * 2
+            db.iconSize = size
+            NotifyChanged()
+        end
+
+        local settingSize = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_ENCHANTING_VELLUM_ICON_SIZE",
+            Settings.VarType.Number,
+            "Icon Size",
+            36,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(24, 48, 2)
+        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
+        Settings.CreateSlider(category, settingSize, options, "Size of the Enchanting Vellum button icon.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.anchorOffsetX) or 0
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            local offset = math.floor((tonumber(v) or 0) + 0.5)
+            if offset < 0 then offset = 0 end
+            if offset > 20 then offset = 20 end
+            db.anchorOffsetX = offset
+            NotifyChanged()
+        end
+
+        local settingOffsetX = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_ENCHANTING_VELLUM_ANCHOR_OFFSET_X",
+            Settings.VarType.Number,
+            "Anchor Distance X",
+            0,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(0, 20, 1)
+        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
+        Settings.CreateSlider(category, settingOffsetX, options, "Horizontal distance from the Create button bottom-right anchor point.")
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.anchorOffsetY) or 0
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            local offset = math.floor((tonumber(v) or 0) + 0.5)
+            if offset < 0 then offset = 0 end
+            if offset > 20 then offset = 20 end
+            db.anchorOffsetY = offset
+            NotifyChanged()
+        end
+
+        local settingOffsetY = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_ENCHANTING_VELLUM_ANCHOR_OFFSET_Y",
+            Settings.VarType.Number,
+            "Anchor Distance Y",
+            0,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(0, 20, 1)
+        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
+        Settings.CreateSlider(category, settingOffsetY, options, "Vertical distance from the Create button bottom-right anchor point.")
+    end
+end
+
 local function BuildEasyDisenchantControls(category)
     local function EnsureDB()
         NX.DB.professions.easyDisenchant = NX.DB.professions.easyDisenchant or {}
@@ -4086,6 +4222,8 @@ function S:Register()
     BuildAutoWithdrawTreatiseControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Easy Disenchant")
     BuildEasyDisenchantControls(professionsCategory)
+    AddSectionHeader(professionsCategory, "Enchanting Vellum")
+    BuildEnchantingVellumControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Simple First Craft Bonus")
     BuildSimpleFirstCraftBonusControls(professionsCategory)
 

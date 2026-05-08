@@ -5,7 +5,7 @@
 ## Category: Quality of Life
 ## X-Category: Quality of Life
 ## Author: Faith
-## Version: 1.0.9
+## Version: 1.0.10
 ## SavedVariables: NexusDB
 ## OptionalDeps: LibSharedMedia-3.0
 
@@ -40,6 +40,7 @@ modules/clickableBuffs/clickableBuffs.lua
 modules/statsPlus/statsPlus.lua
 modules/professions/simpleFirstCraftBonus.lua
 modules/professions/easyDisenchant.lua
+modules/professions/enchantingVellum.lua
 modules/professions/autoWithdrawTreatise.lua
 modules/settings/panel.lua
 modules/system/cVarStateSync.lua
