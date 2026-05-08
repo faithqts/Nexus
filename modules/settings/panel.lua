@@ -323,7 +323,7 @@ local function CreateLandingPanel()
     local portalsBody = CreateBodyLine(portalsHeader, "Portal bar visibility, legacy portal filtering, layout sizing, spacing, and anchor positioning.")
 
     local professionsHeader = CreateHeaderLine(portalsBody, "Professions:")
-    local professionsBody = CreateBodyLine(professionsHeader, "Simple First Craft Bonus and Easy Disenchant controls.")
+    local professionsBody = CreateBodyLine(professionsHeader, "Simple First Craft Bonus, Easy Disenchant, and Auto Withdraw Treatise controls.")
 
     local settingsAnchorsHeader = CreateHeaderLine(professionsBody, "Settings & Anchors:")
     local settingsAnchorsBody = CreateBodyLine(settingsAnchorsHeader, "Shared addon settings, LUA errors, slash command toggles, and unified anchor toggles.")
@@ -2405,6 +2405,36 @@ local function BuildSimpleFirstCraftBonusControls(category)
     CreateEnabledDisabledDropdown(category, setting, "Shows a first-craft icon beside eligible profession recipes.")
 end
 
+local function BuildAutoWithdrawTreatiseControls(category)
+    local function GetValue()
+        return not not (NX.DB.professions.autoWithdrawTreatise and NX.DB.professions.autoWithdrawTreatise.enabled)
+    end
+
+    local function SetValue(v)
+        NX.DB.professions.autoWithdrawTreatise = NX.DB.professions.autoWithdrawTreatise or {}
+        NX.DB.professions.autoWithdrawTreatise.enabled = not not v
+        if NX.AutoWithdrawTreatise and NX.AutoWithdrawTreatise.OnSettingsChanged then
+            NX.AutoWithdrawTreatise:OnSettingsChanged()
+        end
+    end
+
+    local setting = Settings.RegisterProxySetting(
+        category,
+        "NEXUS_AUTO_WITHDRAW_TREATISE_ENABLED",
+        Settings.VarType.Boolean,
+        "Enabled",
+        false,
+        GetValue,
+        SetValue
+    )
+
+    CreateEnabledDisabledDropdown(
+        category,
+        setting,
+        "Automatically withdraws one Midnight treatise per active profession when the bank opens if the weekly quest is incomplete, the treatise is present in Warband bank, and you do not already have one in bags."
+    )
+end
+
 local function BuildEasyDisenchantControls(category)
     local function EnsureDB()
         NX.DB.professions.easyDisenchant = NX.DB.professions.easyDisenchant or {}
@@ -4052,6 +4082,8 @@ function S:Register()
     local professionsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Professions")
     self.professionsCategoryID = professionsCategory:GetID()
 
+    AddSectionHeader(professionsCategory, "Auto Withdraw Treatise")
+    BuildAutoWithdrawTreatiseControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Easy Disenchant")
     BuildEasyDisenchantControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Simple First Craft Bonus")

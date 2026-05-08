@@ -209,6 +209,9 @@ local defaults = {
                 color = { 0, 0, 0, 1 },
             },
         },
+        autoWithdrawTreatise = {
+            enabled = false,
+        },
     },
 
     alerts = {
@@ -608,6 +611,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.EasyDisenchant and NX.EasyDisenchant.Init then
             NX.EasyDisenchant:Init()
+        end
+        if NX.AutoWithdrawTreatise and NX.AutoWithdrawTreatise.Init then
+            NX.AutoWithdrawTreatise:Init()
         end
         if NX.Minimap and NX.Minimap.Init then
             NX.Minimap:Init()
