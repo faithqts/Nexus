@@ -34,6 +34,11 @@ The workflows are tightly coupled through shared TOC parsing rules and tag forma
 - Treat TOC version updates as mandatory for any non-TOC code change.
 - Before commit: if non-TOC files are staged, stage the root TOC file with an updated `## Version:` value.
 - Before push: verify outgoing commits include that TOC version bump.
+- When generating a commit/push on request, include a `Release Notes:` section in the commit message body using exactly this bullet format:
+  - `- Item 1`
+  - `- Item 2`
+  - `- Item 3`
+- Replace `Item 1/2/3` with concise, concrete summaries of the actual changes in that commit.
 
 ## TOC Guard Hooks
 
