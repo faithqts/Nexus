@@ -98,6 +98,9 @@ local defaults = {
             flashing = true,
             color = "#FFFF00",
         },
+        moneyFrameFix = {
+            enabled = false,
+        },
         motionSickness = {
             enabled = false,
         },
@@ -559,6 +562,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.CleanObjectiveTracker and NX.CleanObjectiveTracker.Init then
             NX.CleanObjectiveTracker:Init()
+        end
+        if NX.MoneyFrameFix and NX.MoneyFrameFix.Init then
+            NX.MoneyFrameFix:Init()
         end
         if NX.WaypointAutoPinTracking and NX.WaypointAutoPinTracking.Init then
             NX.WaypointAutoPinTracking:Init()

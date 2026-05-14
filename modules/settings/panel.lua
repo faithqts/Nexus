@@ -1861,6 +1861,41 @@ local function BuildAlwaysSharpenControls(category)
     end
 end
 
+local function BuildMoneyFrameFixControls(category)
+    do
+        local function GetValue()
+            return not not (NX.DB.interface.moneyFrameFix and NX.DB.interface.moneyFrameFix.enabled)
+        end
+
+        local function SetValue(v)
+            NX.DB.interface.moneyFrameFix = NX.DB.interface.moneyFrameFix or {}
+            local enabled = not not v
+
+            if NX.MoneyFrameFix and NX.MoneyFrameFix.SetEnabled then
+                NX.MoneyFrameFix:SetEnabled(enabled, true)
+            else
+                NX.DB.interface.moneyFrameFix.enabled = enabled
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_MONEY_FRAME_FIX_ENABLED",
+            Settings.VarType.Boolean,
+            "Money Frame Fix",
+            false,
+            GetValue,
+            SetValue
+        )
+
+        CreateEnabledDisabledDropdown(
+            category,
+            setting,
+            "Overrides SetTooltipMoney to work around the MoneyFrame tooltip bug. Requires a UI reload when enabling."
+        )
+    end
+end
+
 local function BuildEnhancedErrorTextControls(category)
     AddSectionHeader(category, "Objective & Error Text")
 
@@ -4189,6 +4224,8 @@ function S:Register()
     AddSectionHeader(interfaceCategory, "Low Durability")
     BuildLowDurabilityControls(interfaceCategory)
     BuildEnhancedErrorTextControls(interfaceCategory)
+    AddSectionHeader(interfaceCategory, "Blizzard Interface Fixes")
+    BuildMoneyFrameFixControls(interfaceCategory)
     AddSectionHeader(interfaceCategory, "Visual Clarity")
     BuildMotionSicknessControls(interfaceCategory)
     BuildSkyridingEffectsControls(interfaceCategory)

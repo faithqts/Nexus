@@ -5,7 +5,7 @@
 ## Category: Quality of Life
 ## X-Category: Quality of Life
 ## Author: Faith
-## Version: 1.0.10
+## Version: 1.0.11
 ## SavedVariables: NexusDB
 ## OptionalDeps: LibSharedMedia-3.0
 
@@ -29,6 +29,7 @@ modules/interface/alwaysSharpen.lua
 modules/interface/enhancedErrorText.lua
 modules/interface/cleanObjectiveTracker.lua
 modules/interface/lowDurability.lua
+modules/interface/moneyFrameFix.lua
 modules/warbank/bankWarboundItems.lua
 modules/minimap/minimapZoomout.lua
 modules/minimap/enhancedResourceIcons.lua
