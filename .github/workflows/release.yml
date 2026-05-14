@@ -202,7 +202,7 @@ jobs:
             --arg version "$VERSION" \
             --arg download_url "$DOWNLOAD_URL" \
             --arg release_notes "$RELEASE_NOTES" \
-            --arg thumbnail_url "https://images-ext-1.discordapp.net/external/dNfKZzz14vEYMPJJ639InbANT6KXuygF3N_MzNvSo7k/https/cscdn.support.blizzard.com/maintenance-icons/WoWMidnight.png?format=webp&quality=lossless&width=150&height=150" \
+            --arg thumbnail_url "https://cscdn.support.blizzard.com/maintenance-icons/WoWMidnight.png" \
             '{
               content: null,
               embeds: [
@@ -240,7 +240,7 @@ jobs:
                 }
               ],
               username: "GitHub",
-              avatar_url: "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg",
+              avatar_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
               attachments: []
             }')
 
