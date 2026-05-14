@@ -188,35 +188,16 @@ local defaults = {
     },
 
     professions = {
+        craftingOrderFilterDefaults = {
+            enabled = true,
+            showLearned = true,
+            haveMaterials = false,
+            showUnlearned = true,
+            hasSkillUp = false,
+            firstCraftBonus = false,
+        },
         simpleFirstCraftBonus = {
             enabled = true,
-        },
-        easyDisenchant = {
-            enabled = false,
-            preferElvUI = true,
-            anchorSide = "LEFT",
-            xOffset = 0,
-            yOffset = -50,
-            outsidePadding = 6,
-            size = 38,
-            iconZoom = 0.10,
-            alpha = 1,
-            frameStrata = "DIALOG",
-            spellID = 13262,
-            enchantingSkillLineID = 333,
-            enchantingNameSpellID = 7411,
-            border = {
-                enabled = true,
-                size = 1,
-                offset = 1,
-                color = { 0, 0, 0, 1 },
-            },
-        },
-        enchantingVellum = {
-            enabled = true,
-            iconSize = 36,
-            anchorOffsetX = 0,
-            anchorOffsetY = 0,
         },
         autoWithdrawTreatise = {
             enabled = false,
@@ -621,11 +602,8 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if NX.SimpleFirstCraftBonus and NX.SimpleFirstCraftBonus.Init then
             NX.SimpleFirstCraftBonus:Init()
         end
-        if NX.EasyDisenchant and NX.EasyDisenchant.Init then
-            NX.EasyDisenchant:Init()
-        end
-        if NX.EnchantingVellum and NX.EnchantingVellum.Init then
-            NX.EnchantingVellum:Init()
+        if NX.CraftingOrderFilterDefaults and NX.CraftingOrderFilterDefaults.Init then
+            NX.CraftingOrderFilterDefaults:Init()
         end
         if NX.AutoWithdrawTreatise and NX.AutoWithdrawTreatise.Init then
             NX.AutoWithdrawTreatise:Init()
@@ -715,7 +693,6 @@ SlashCmdList["NEXUS"] = function(msg)
             print("|cffffd200Nexus:|r /nx mouse help")
             print("|cffffd200Nexus:|r /nx minimap help")
             print("|cffffd200Nexus:|r /nx resourceicons help")
-            print("|cffffd200Nexus:|r /nx disenchant help")
             print("|cffffd200Nexus:|r /nx warbank help")
             print("|cffffd200Nexus:|r /nx stats help")
             print("|cffffd200Nexus:|r /nx vault help")
@@ -736,12 +713,6 @@ SlashCmdList["NEXUS"] = function(msg)
         end
         if cmd == "buffs" and NX.ClickableBuffs and NX.ClickableBuffs.HandleNxSlash then
             local handled = NX.ClickableBuffs:HandleNxSlash(rest)
-            if handled then
-                return
-            end
-        end
-        if cmd == "disenchant" and NX.EasyDisenchant and NX.EasyDisenchant.HandleNxSlash then
-            local handled = NX.EasyDisenchant:HandleNxSlash(rest)
             if handled then
                 return
             end

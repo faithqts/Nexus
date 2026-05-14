@@ -323,7 +323,7 @@ local function CreateLandingPanel()
     local portalsBody = CreateBodyLine(portalsHeader, "Portal bar visibility, legacy portal filtering, layout sizing, spacing, and anchor positioning.")
 
     local professionsHeader = CreateHeaderLine(portalsBody, "Professions:")
-    local professionsBody = CreateBodyLine(professionsHeader, "Simple First Craft Bonus, Easy Disenchant, Enchanting Vellum, and Auto Withdraw Treatise controls.")
+    local professionsBody = CreateBodyLine(professionsHeader, "Crafting Order Filter Defaults, Simple First Craft Bonus, and Auto Withdraw Treatise controls.")
 
     local settingsAnchorsHeader = CreateHeaderLine(professionsBody, "Settings & Anchors:")
     local settingsAnchorsBody = CreateBodyLine(settingsAnchorsHeader, "Shared addon settings, LUA errors, slash command toggles, and unified anchor toggles.")
@@ -2470,370 +2470,106 @@ local function BuildAutoWithdrawTreatiseControls(category)
     )
 end
 
-local function BuildEnchantingVellumControls(category)
+local function BuildCraftingOrderFilterDefaultsControls(category)
     local function EnsureDB()
-        NX.DB.professions.enchantingVellum = NX.DB.professions.enchantingVellum or {}
-        local db = NX.DB.professions.enchantingVellum
+        NX.DB.professions.craftingOrderFilterDefaults = NX.DB.professions.craftingOrderFilterDefaults or {}
+        local db = NX.DB.professions.craftingOrderFilterDefaults
+
         if db.enabled == nil then db.enabled = true end
-        if db.iconSize == nil then db.iconSize = 36 end
-        if db.anchorOffsetX == nil then db.anchorOffsetX = 0 end
-        if db.anchorOffsetY == nil then db.anchorOffsetY = 0 end
+        if db.showLearned == nil then db.showLearned = true end
+        if db.haveMaterials == nil then db.haveMaterials = false end
+        if db.showUnlearned == nil then db.showUnlearned = true end
+        if db.hasSkillUp == nil then db.hasSkillUp = false end
+        if db.firstCraftBonus == nil then db.firstCraftBonus = false end
+
+        db.enabled = db.enabled and true or false
+        db.showLearned = db.showLearned and true or false
+        db.haveMaterials = db.haveMaterials and true or false
+        db.showUnlearned = db.showUnlearned and true or false
+        db.hasSkillUp = db.hasSkillUp and true or false
+        db.firstCraftBonus = db.firstCraftBonus and true or false
+
         return db
     end
 
     local function NotifyChanged()
-        if NX.EnchantingVellum and NX.EnchantingVellum.OnSettingsChanged then
-            NX.EnchantingVellum:OnSettingsChanged()
+        if NX.CraftingOrderFilterDefaults and NX.CraftingOrderFilterDefaults.OnSettingsChanged then
+            NX.CraftingOrderFilterDefaults:OnSettingsChanged()
         end
     end
 
-    local function GetValue()
-        local db = EnsureDB()
-        return db.enabled == true
+    local function CreateToggle(dbKey, cvarSuffix, label, defaultValue, tooltip)
+        local function GetValue()
+            local db = EnsureDB()
+            return not not db[dbKey]
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db[dbKey] = not not v
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_CRAFTING_ORDER_FILTER_DEFAULTS_" .. cvarSuffix,
+            Settings.VarType.Boolean,
+            label,
+            defaultValue and true or false,
+            GetValue,
+            SetValue
+        )
+
+        CreateBooleanCheckboxControl(category, setting, tooltip)
     end
 
-    local function SetValue(v)
-        local db = EnsureDB()
-        db.enabled = not not v
-        NotifyChanged()
-    end
-
-    local setting = Settings.RegisterProxySetting(
-        category,
-        "NEXUS_ENCHANTING_VELLUM_ENABLED",
-        Settings.VarType.Boolean,
+    CreateToggle(
+        "enabled",
+        "ENABLED",
         "Enabled",
         true,
-        GetValue,
-        SetValue
+        "Enable to apply your Crafting Orders filter defaults when opening the Orders tab."
     )
 
-    CreateEnabledDisabledDropdown(
-        category,
-        setting,
-        "Adds an Enchant Vellum action button to the enchanting crafting page that crafts and applies a vellum in one click when valid."
+    CreateToggle(
+        "showLearned",
+        "SHOW_LEARNED",
+        "Show Learned",
+        true,
+        "Sets whether learned recipes are shown by default on the Crafting Orders browse list."
     )
 
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.iconSize) or 36
-        end
+    CreateToggle(
+        "haveMaterials",
+        "HAVE_MATERIALS",
+        "Have Materials",
+        false,
+        "Sets whether the Orders list defaults to recipes you can currently make with available materials."
+    )
 
-        local function SetValue(v)
-            local db = EnsureDB()
-            local size = math.floor((tonumber(v) or 36) + 0.5)
-            if size < 24 then size = 24 end
-            if size > 48 then size = 48 end
-            size = math.floor((size / 2) + 0.5) * 2
-            db.iconSize = size
-            NotifyChanged()
-        end
+    CreateToggle(
+        "showUnlearned",
+        "SHOW_UNLEARNED",
+        "Show Unlearned",
+        true,
+        "Sets whether unlearned recipes are shown by default on the Orders list."
+    )
 
-        local settingSize = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ENCHANTING_VELLUM_ICON_SIZE",
-            Settings.VarType.Number,
-            "Icon Size",
-            36,
-            GetValue,
-            SetValue
-        )
+    CreateToggle(
+        "hasSkillUp",
+        "HAS_SKILL_UP",
+        "Has Skill Up",
+        false,
+        "Sets whether only recipes that grant skill-ups are shown by default."
+    )
 
-        local options = Settings.CreateSliderOptions(24, 48, 2)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, settingSize, options, "Size of the Enchanting Vellum button icon.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.anchorOffsetX) or 0
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            local offset = math.floor((tonumber(v) or 0) + 0.5)
-            if offset < 0 then offset = 0 end
-            if offset > 20 then offset = 20 end
-            db.anchorOffsetX = offset
-            NotifyChanged()
-        end
-
-        local settingOffsetX = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ENCHANTING_VELLUM_ANCHOR_OFFSET_X",
-            Settings.VarType.Number,
-            "Anchor Distance X",
-            0,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0, 20, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, settingOffsetX, options, "Horizontal distance from the Create button bottom-right anchor point.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.anchorOffsetY) or 0
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            local offset = math.floor((tonumber(v) or 0) + 0.5)
-            if offset < 0 then offset = 0 end
-            if offset > 20 then offset = 20 end
-            db.anchorOffsetY = offset
-            NotifyChanged()
-        end
-
-        local settingOffsetY = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_ENCHANTING_VELLUM_ANCHOR_OFFSET_Y",
-            Settings.VarType.Number,
-            "Anchor Distance Y",
-            0,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0, 20, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, settingOffsetY, options, "Vertical distance from the Create button bottom-right anchor point.")
-    end
-end
-
-local function BuildEasyDisenchantControls(category)
-    local function EnsureDB()
-        NX.DB.professions.easyDisenchant = NX.DB.professions.easyDisenchant or {}
-        local db = NX.DB.professions.easyDisenchant
-        if db.enabled == nil then db.enabled = true end
-        if db.anchorSide == nil then db.anchorSide = "LEFT" end
-        if db.xOffset == nil then db.xOffset = 0 end
-        if db.yOffset == nil then db.yOffset = -50 end
-        if db.outsidePadding == nil then db.outsidePadding = 6 end
-        if db.size == nil then db.size = 38 end
-        if db.iconZoom == nil then db.iconZoom = 0.10 end
-        return db
-    end
-
-    local function NotifyChanged()
-        if NX.EasyDisenchant and NX.EasyDisenchant.OnSettingsChanged then
-            NX.EasyDisenchant:OnSettingsChanged()
-        end
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return db.enabled == true
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.enabled = v and true or false
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_EASY_DISENCHANT_ENABLED",
-            Settings.VarType.Boolean,
-            "Enabled",
-            true,
-            GetValue,
-            SetValue
-        )
-
-        CreateEnabledDisabledDropdown(category, setting, "Show a Disenchant button on your bag frame when Disenchant is known and Enchanting is learned.")
-    end
-
-    do
-        local function GetAnchorSideOptionsData()
-            local c = Settings.CreateControlTextContainer()
-            c:Add("LEFT", "Left")
-            c:Add("RIGHT", "Right")
-            return c:GetData()
-        end
-
-        local function GetValue()
-            local db = EnsureDB()
-            local value = string.upper(tostring(db.anchorSide or "LEFT"))
-            if value ~= "LEFT" and value ~= "RIGHT" then
-                value = "LEFT"
-            end
-            return value
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            local value = string.upper(tostring(v or "LEFT"))
-            if value ~= "LEFT" and value ~= "RIGHT" then
-                value = "LEFT"
-            end
-            db.anchorSide = value
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_EASY_DISENCHANT_ANCHOR_SIDE",
-            Settings.VarType.String,
-            "Anchor Side",
-            "LEFT",
-            GetValue,
-            SetValue
-        )
-
-        local init = Settings.CreateDropdown(category, setting, GetAnchorSideOptionsData, "Choose which side of the bag frame the button anchors to.")
-        init.reinitializeOnValueChanged = true
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.xOffset) or 0
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.xOffset = math.floor((tonumber(v) or 0) + 0.5)
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_EASY_DISENCHANT_X_OFFSET",
-            Settings.VarType.Number,
-            "X Offset",
-            0,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(-200, 200, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, setting, options, "Horizontal offset for the Disenchant button anchor.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.yOffset) or -50
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.yOffset = math.floor((tonumber(v) or -50) + 0.5)
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_EASY_DISENCHANT_Y_OFFSET",
-            Settings.VarType.Number,
-            "Y Offset",
-            -50,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(-200, 200, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, setting, options, "Vertical offset for the Disenchant button anchor.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.outsidePadding) or 6
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.outsidePadding = math.floor((tonumber(v) or 6) + 0.5)
-            if db.outsidePadding < 0 then db.outsidePadding = 0 end
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_EASY_DISENCHANT_OUTSIDE_PADDING",
-            Settings.VarType.Number,
-            "Outside Padding",
-            6,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0, 40, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, setting, options, "Extra gap between the button and the bag frame edge.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return tonumber(db.size) or 38
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            db.size = math.floor((tonumber(v) or 38) + 0.5)
-            if db.size < 20 then db.size = 20 end
-            if db.size > 96 then db.size = 96 end
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_EASY_DISENCHANT_SIZE",
-            Settings.VarType.Number,
-            "Button Size",
-            38,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(20, 96, 1)
-        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
-        Settings.CreateSlider(category, setting, options, "Size of the Easy Disenchant button.")
-    end
-
-    do
-        local function GetValue()
-            local db = EnsureDB()
-            return math.floor(((tonumber(db.iconZoom) or 0.10) * 100) + 0.5)
-        end
-
-        local function SetValue(v)
-            local db = EnsureDB()
-            local pct = math.floor((tonumber(v) or 10) + 0.5)
-            if pct < 0 then pct = 0 end
-            if pct > 49 then pct = 49 end
-            db.iconZoom = pct / 100
-            NotifyChanged()
-        end
-
-        local setting = Settings.RegisterProxySetting(
-            category,
-            "NEXUS_EASY_DISENCHANT_ICON_ZOOM",
-            Settings.VarType.Number,
-            "Icon Zoom",
-            10,
-            GetValue,
-            SetValue
-        )
-
-        local options = Settings.CreateSliderOptions(0, 49, 1)
-        ApplyRightLabel(options, function(v)
-            return string.format("%d%%", v)
-        end)
-        Settings.CreateSlider(category, setting, options, "Crops the icon inward to mimic zoom.")
-    end
+    CreateToggle(
+        "firstCraftBonus",
+        "FIRST_CRAFT_BONUS",
+        "First Craft Bonus",
+        false,
+        "Sets whether only recipes with first craft bonus are shown by default."
+    )
 end
 
 local function BuildClickableBuffsControls(category)
@@ -4255,12 +3991,10 @@ function S:Register()
     local professionsCategory = Settings.RegisterVerticalLayoutSubcategory(parentCategory, "Professions")
     self.professionsCategoryID = professionsCategory:GetID()
 
+    AddSectionHeader(professionsCategory, "Crafting Order Filter Defaults")
+    BuildCraftingOrderFilterDefaultsControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Auto Withdraw Treatise")
     BuildAutoWithdrawTreatiseControls(professionsCategory)
-    AddSectionHeader(professionsCategory, "Easy Disenchant")
-    BuildEasyDisenchantControls(professionsCategory)
-    AddSectionHeader(professionsCategory, "Enchanting Vellum")
-    BuildEnchantingVellumControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Simple First Craft Bonus")
     BuildSimpleFirstCraftBonusControls(professionsCategory)
 
