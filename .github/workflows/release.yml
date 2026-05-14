@@ -188,12 +188,17 @@ jobs:
 
       - name: Send Discord Webhook
         if: steps.release_gate.outputs.should_release == 'true'
+        env:
+          PROJECT_NAME: ${{ steps.meta.outputs.project_name }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          SAFE_NAME: ${{ steps.meta.outputs.safe_name }}
+          RELEASE_TAG: ${{ steps.release_gate.outputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_NOTES: ${{ steps.notes.outputs.discord_notes }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           set -euo pipefail
-          PROJECT_NAME="${{ steps.meta.outputs.project_name }}"
-          VERSION="${{ steps.meta.outputs.version }}"
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.release_gate.outputs.tag }}/${{ steps.meta.outputs.safe_name }}-${VERSION}.zip"
-          RELEASE_NOTES="${{ steps.notes.outputs.discord_notes }}"
+          DOWNLOAD_URL="https://github.com/${REPOSITORY}/releases/download/${RELEASE_TAG}/${SAFE_NAME}-${VERSION}.zip"
           UNIX_TIMESTAMP=$(date +%s)
 
           PAYLOAD=$(jq -n \
@@ -247,4 +252,4 @@ jobs:
           curl -H "Content-Type: application/json" \
           -X POST \
           -d "$PAYLOAD" \
-          "${{ secrets.DISCORD_WEBHOOK_URL }}"
+          "$DISCORD_WEBHOOK_URL"
