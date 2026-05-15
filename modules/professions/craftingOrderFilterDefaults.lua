@@ -96,6 +96,67 @@ do
         end
     end
 
+    local function BuildCustomOrdersFilterSet(frame, db)
+        local filterSet = nil
+
+        if frame and frame.craftingOrdersFilters then
+            filterSet = CloneFilterSet(frame.craftingOrdersFilters)
+        elseif Professions and Professions.GetCurrentFilterSet then
+            filterSet = CloneFilterSet(Professions.GetCurrentFilterSet())
+        else
+            filterSet = {}
+        end
+
+        if type(filterSet.textFilter) ~= "string" then
+            filterSet.textFilter = ""
+        end
+
+        if filterSet.sourceTypeFilter == nil and C_TradeSkillUI and C_TradeSkillUI.GetSourceTypeFilter then
+            local ok, sourceTypeFilter = pcall(C_TradeSkillUI.GetSourceTypeFilter)
+            if ok then
+                filterSet.sourceTypeFilter = sourceTypeFilter
+            end
+        end
+        if filterSet.sourceTypeFilter == nil then
+            filterSet.sourceTypeFilter = 0
+        end
+
+        if type(filterSet.invTypeFilters) ~= "table" then
+            filterSet.invTypeFilters = {}
+        end
+
+        filterSet.showLearned = db.showLearned
+        filterSet.showUnlearned = db.showUnlearned
+        filterSet.showOnlyMakeable = db.haveMaterials
+        filterSet.showOnlySkillUps = db.hasSkillUp
+        filterSet.showOnlyFirstCraft = db.firstCraftBonus
+
+        return filterSet
+    end
+
+    local function ApplyFilterSet(filterSet, frame)
+        local applyFilterSet = Professions and (Professions.ApplyFilterSet or Professions.ApplyfilterSet)
+
+        if frame and filterSet then
+            frame.craftingOrdersFilters = CloneFilterSet(filterSet)
+        end
+
+        if filterSet and applyFilterSet then
+            return SafeCall(applyFilterSet, filterSet)
+        end
+
+        if C_TradeSkillUI and filterSet then
+            SafeCall(C_TradeSkillUI.SetShowLearned, filterSet.showLearned and true or false)
+            SafeCall(C_TradeSkillUI.SetShowUnlearned, filterSet.showUnlearned and true or false)
+            SafeCall(C_TradeSkillUI.SetOnlyShowMakeableRecipes, filterSet.showOnlyMakeable and true or false)
+            SafeCall(C_TradeSkillUI.SetOnlyShowSkillUpRecipes, filterSet.showOnlySkillUps and true or false)
+            SafeCall(C_TradeSkillUI.SetOnlyShowFirstCraftRecipes, filterSet.showOnlyFirstCraft and true or false)
+            return true
+        end
+
+        return false
+    end
+
     local function ApplyOrdersTabFilters(frame)
         if state.customFiltersApplied or not C_TradeSkillUI then
             return
@@ -108,18 +169,11 @@ do
 
         SaveCurrentOrdersFilters(frame)
 
-        SafeCall(C_TradeSkillUI.SetShowLearned, db.showLearned)
-        SafeCall(C_TradeSkillUI.SetOnlyShowMakeableRecipes, db.haveMaterials)
-        SafeCall(C_TradeSkillUI.SetShowUnlearned, db.showUnlearned)
-        SafeCall(C_TradeSkillUI.SetOnlyShowSkillUpRecipes, db.hasSkillUp)
-        SafeCall(C_TradeSkillUI.SetOnlyShowFirstCraftRecipes, db.firstCraftBonus)
+        local customFilterSet = BuildCustomOrdersFilterSet(frame, db)
+        ApplyFilterSet(customFilterSet, frame)
 
-        if Professions and Professions.SetAllSourcesFiltered then
-            SafeCall(Professions.SetAllSourcesFiltered, false)
-        end
-
-        if Professions and Professions.SetAllInventorySlotsFiltered then
-            SafeCall(Professions.SetAllInventorySlotsFiltered, true)
+        if C_TradeSkillUI.SetOnlyShowAvailableForOrders then
+            SafeCall(C_TradeSkillUI.SetOnlyShowAvailableForOrders, db.haveMaterials)
         end
 
         ValidateFilterDropdowns(frame)
@@ -146,13 +200,16 @@ do
         end
 
         if applyImmediately then
-            local applyFilterSet = Professions and (Professions.ApplyFilterSet or Professions.ApplyfilterSet)
-            if savedFilterSet and applyFilterSet then
-                SafeCall(applyFilterSet, savedFilterSet)
+            if savedFilterSet then
+                ApplyFilterSet(savedFilterSet, frame)
             elseif Professions and Professions.SetDefaultFilters then
                 local ignoreSkillLine = true
                 SafeCall(Professions.SetDefaultFilters, ignoreSkillLine)
             end
+        end
+
+        if C_TradeSkillUI and C_TradeSkillUI.SetOnlyShowAvailableForOrders then
+            SafeCall(C_TradeSkillUI.SetOnlyShowAvailableForOrders, false)
         end
 
         state.savedOrdersFilterSet = nil
