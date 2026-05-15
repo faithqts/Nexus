@@ -96,6 +96,23 @@ do
         end
     end
 
+    local function IsOnOrdersTab(frame)
+        if not frame then
+            return false
+        end
+
+        local ordersTabID = frame.craftingOrdersTabID
+        if not ordersTabID then
+            return false
+        end
+
+        if frame.GetTab then
+            return frame:GetTab() == ordersTabID
+        end
+
+        return false
+    end
+
     local function BuildCustomOrdersFilterSet(frame, db)
         local filterSet = nil
 
@@ -142,24 +159,45 @@ do
         end
 
         if filterSet and applyFilterSet then
-            return SafeCall(applyFilterSet, filterSet)
+            local ok = SafeCall(applyFilterSet, filterSet)
+            if ok then
+                return true
+            end
         end
 
         if C_TradeSkillUI and filterSet then
+            if C_TradeSkillUI.SetRecipeItemNameFilter and type(filterSet.textFilter) == "string" then
+                SafeCall(C_TradeSkillUI.SetRecipeItemNameFilter, filterSet.textFilter)
+            end
             SafeCall(C_TradeSkillUI.SetShowLearned, filterSet.showLearned and true or false)
             SafeCall(C_TradeSkillUI.SetShowUnlearned, filterSet.showUnlearned and true or false)
             SafeCall(C_TradeSkillUI.SetOnlyShowMakeableRecipes, filterSet.showOnlyMakeable and true or false)
             SafeCall(C_TradeSkillUI.SetOnlyShowSkillUpRecipes, filterSet.showOnlySkillUps and true or false)
             SafeCall(C_TradeSkillUI.SetOnlyShowFirstCraftRecipes, filterSet.showOnlyFirstCraft and true or false)
+
+            if C_TradeSkillUI.SetSourceTypeFilter and type(filterSet.sourceTypeFilter) == "number" then
+                SafeCall(C_TradeSkillUI.SetSourceTypeFilter, filterSet.sourceTypeFilter)
+            end
+
+            if type(filterSet.invTypeFilters) == "table" and C_TradeSkillUI.SetInventorySlotFilter then
+                for idx, filtered in ipairs(filterSet.invTypeFilters) do
+                    SafeCall(C_TradeSkillUI.SetInventorySlotFilter, idx, not (filtered and true or false))
+                end
+            end
+
             return true
         end
 
         return false
     end
 
-    local function ApplyOrdersTabFilters(frame)
-        if state.customFiltersApplied or not C_TradeSkillUI then
+    local function ApplyOrdersTabFilters(frame, forceApply, requestOrders)
+        if (state.customFiltersApplied and not forceApply) or not C_TradeSkillUI then
             return
+        end
+
+        if requestOrders == nil then
+            requestOrders = true
         end
 
         local db = M:EnsureDB()
@@ -167,7 +205,9 @@ do
             return
         end
 
-        SaveCurrentOrdersFilters(frame)
+        if not state.customFiltersApplied then
+            SaveCurrentOrdersFilters(frame)
+        end
 
         local customFilterSet = BuildCustomOrdersFilterSet(frame, db)
         ApplyFilterSet(customFilterSet, frame)
@@ -178,7 +218,7 @@ do
 
         ValidateFilterDropdowns(frame)
 
-        if frame and frame.OrdersPage and frame.OrdersPage.RequestOrders then
+        if requestOrders and frame and frame.OrdersPage and frame.OrdersPage.RequestOrders then
             local selectedSkillLineAbility = nil
             local searchFavorites = false
             local initialNonPublicSearch = false
@@ -229,6 +269,34 @@ do
         ValidateFilterDropdowns(frame)
     end
 
+    local function ScheduleOrdersTabFilterApply(frame, requestOrders)
+        if not frame then
+            return
+        end
+
+        local function ApplyIfReady(forceApply, shouldRequestOrders)
+            if not frame.IsShown or not frame:IsShown() then
+                return
+            end
+
+            if not IsOnOrdersTab(frame) then
+                return
+            end
+
+            ApplyOrdersTabFilters(frame, forceApply, shouldRequestOrders)
+        end
+
+        C_Timer.After(0, function()
+            ApplyIfReady(false, requestOrders)
+        end)
+
+        -- Blizzard orders page toggles some flags during OnShow/next-frame startup.
+        -- A second forced pass keeps Nexus settings authoritative after that initialization.
+        C_Timer.After(0.15, function()
+            ApplyIfReady(true, false)
+        end)
+    end
+
     local function OnProfessionsTabSet(_, frame, tabID)
         if not frame then
             return
@@ -238,24 +306,19 @@ do
         local onOrdersTab = ordersTabID ~= nil and tabID == ordersTabID
 
         if onOrdersTab then
-            C_Timer.After(0, function()
-                if not frame:IsShown() then
-                    return
-                end
-
-                if frame.GetTab and frame:GetTab() ~= ordersTabID then
-                    return
-                end
-
-                ApplyOrdersTabFilters(frame)
-            end)
+            ScheduleOrdersTabFilterApply(frame, true)
         else
             RestoreNormalFilters(frame, true)
         end
     end
 
     local function OnProfessionsFrameShow(_, frame)
-        ResetToDefaultFilters(frame or _G.ProfessionsFrame)
+        local professionsFrame = frame or _G.ProfessionsFrame
+        ResetToDefaultFilters(professionsFrame)
+
+        if IsOnOrdersTab(professionsFrame) then
+            ScheduleOrdersTabFilterApply(professionsFrame, true)
+        end
     end
 
     local function OnProfessionsFrameHide(_, frame)
@@ -293,17 +356,7 @@ do
             return
         end
 
-        C_Timer.After(0, function()
-            if not frame:IsShown() then
-                return
-            end
-
-            if frame.GetTab and frame:GetTab() ~= ordersTabID then
-                return
-            end
-
-            ApplyOrdersTabFilters(frame)
-        end)
+        ScheduleOrdersTabFilterApply(frame, true)
     end
 
     function M:Init()
