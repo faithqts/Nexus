@@ -5,7 +5,7 @@
 ## Category: Quality of Life
 ## X-Category: Quality of Life
 ## Author: Faith
-## Version: 1.0.14
+## Version: 1.0.15
 ## SavedVariables: NexusDB
 ## OptionalDeps: LibSharedMedia-3.0
 

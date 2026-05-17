@@ -7,6 +7,12 @@ do
     local state = {
         savedOrdersFilterSet = nil,
         customFiltersApplied = false,
+        awaitingInitialOpenTab = false,
+        openSearchTriggered = false,
+        openCycle = 0,
+        frameShownAt = 0,
+        openedOnOrders = nil,
+        openDetectionExpiry = 0,
     }
 
     local callbacksRegistered = false
@@ -111,6 +117,132 @@ do
         end
 
         return false
+    end
+
+    local function GetActiveTabID(frame)
+        if not frame or not frame.GetTab then
+            return nil
+        end
+
+        local ok, tabID = pcall(frame.GetTab, frame)
+        if ok then
+            return tabID
+        end
+
+        return nil
+    end
+
+    local function TriggerOrdersSearch(frame)
+        if not frame or not frame.IsShown or not frame:IsShown() then
+            return false
+        end
+
+        if not IsOnOrdersTab(frame) then
+            return false
+        end
+
+        local ordersPage = frame.OrdersPage
+        local searchButton = ordersPage and ordersPage.BrowseFrame and ordersPage.BrowseFrame.SearchButton
+
+        if searchButton then
+            if searchButton.Click and SafeCall(searchButton.Click, searchButton) then
+                return true
+            end
+
+            local onClick = searchButton.GetScript and searchButton:GetScript("OnClick")
+            if onClick and SafeCall(onClick, searchButton, "LeftButton", false) then
+                return true
+            end
+        end
+
+        if ordersPage and ordersPage.RequestOrders then
+            local selectedSkillLineAbility = nil
+            local searchFavorites = false
+            local initialNonPublicSearch = false
+            return SafeCall(ordersPage.RequestOrders, ordersPage, selectedSkillLineAbility, searchFavorites, initialNonPublicSearch)
+        end
+
+        return false
+    end
+
+    local function ScheduleOpenOrdersSearch(frame)
+        if not frame or state.openSearchTriggered then
+            return
+        end
+
+        local function TrySearch(markTriggered)
+            if markTriggered and state.openSearchTriggered then
+                return
+            end
+
+            if TriggerOrdersSearch(frame) and markTriggered then
+                state.openSearchTriggered = true
+            end
+        end
+
+        local function ForceLateRefresh()
+            if not frame.IsShown or not frame:IsShown() then
+                return
+            end
+
+            if not IsOnOrdersTab(frame) then
+                return
+            end
+
+            if TriggerOrdersSearch(frame) then
+                state.openSearchTriggered = true
+            end
+        end
+
+        C_Timer.After(0, function()
+            TrySearch(true)
+        end)
+
+        C_Timer.After(0.18, function()
+            TrySearch(true)
+        end)
+
+        -- Blizzard calls StartDefaultSearch during Orders page startup, which can restore the
+        -- "no favorites" state for public orders. Do one final refresh after startup settles.
+        C_Timer.After(0.85, ForceLateRefresh)
+    end
+
+    local function IsOpenOnOrdersAllowed(frame)
+        if state.openedOnOrders == true then
+            return true
+        end
+
+        if state.openedOnOrders == false then
+            return false
+        end
+
+        local now = GetTime and GetTime() or 0
+        if now > (state.openDetectionExpiry or 0) then
+            state.openedOnOrders = false
+            return false
+        end
+
+        local activeTabID = GetActiveTabID(frame)
+        if activeTabID == nil then
+            return false
+        end
+
+        local ordersTabID = frame and frame.craftingOrdersTabID
+        local openedOnOrders = ordersTabID ~= nil and activeTabID == ordersTabID
+        state.openedOnOrders = openedOnOrders
+        return openedOnOrders
+    end
+
+    local function MarkOpenStartingTab(frame)
+        local activeTabID = GetActiveTabID(frame)
+        local ordersTabID = frame and frame.craftingOrdersTabID
+
+        if activeTabID == nil or ordersTabID == nil then
+            state.openedOnOrders = nil
+            return
+        end
+
+        state.openedOnOrders = (activeTabID == ordersTabID)
     end
 
     local function BuildCustomOrdersFilterSet(frame, db)
@@ -306,23 +438,98 @@ do
         local onOrdersTab = ordersTabID ~= nil and tabID == ordersTabID
 
         if onOrdersTab then
-            ScheduleOrdersTabFilterApply(frame, true)
+            ScheduleOrdersTabFilterApply(frame, false)
+
+            if state.awaitingInitialOpenTab and not state.openSearchTriggered and IsOpenOnOrdersAllowed(frame) then
+                ScheduleOpenOrdersSearch(frame)
+            end
+
+            state.awaitingInitialOpenTab = false
         else
             RestoreNormalFilters(frame, true)
+
+            if state.awaitingInitialOpenTab and state.openedOnOrders == nil then
+                state.openedOnOrders = false
+            end
+
+            state.awaitingInitialOpenTab = false
         end
     end
 
     local function OnProfessionsFrameShow(_, frame)
         local professionsFrame = frame or _G.ProfessionsFrame
+
+        state.openCycle = state.openCycle + 1
+        local thisOpenCycle = state.openCycle
+        state.frameShownAt = GetTime and GetTime() or 0
+        state.awaitingInitialOpenTab = true
+        state.openSearchTriggered = false
+        state.openedOnOrders = nil
+        state.openDetectionExpiry = (GetTime and GetTime() or 0) + 0.4
+
+        MarkOpenStartingTab(professionsFrame)
+
         ResetToDefaultFilters(professionsFrame)
 
+        local function TryInitialOpenSearch(forceFinalize)
+            if state.openCycle ~= thisOpenCycle then
+                return
+            end
+
+            if state.openSearchTriggered then
+                return
+            end
+
+            if not professionsFrame.IsShown or not professionsFrame:IsShown() then
+                return
+            end
+
+            if IsOpenOnOrdersAllowed(professionsFrame) then
+                ScheduleOpenOrdersSearch(professionsFrame)
+                state.awaitingInitialOpenTab = false
+                return
+            end
+
+            if forceFinalize then
+                state.awaitingInitialOpenTab = false
+                if state.openedOnOrders == nil then
+                    state.openedOnOrders = false
+                end
+            end
+        end
+
+        TryInitialOpenSearch(false)
+        C_Timer.After(0.2, function()
+            TryInitialOpenSearch(false)
+        end)
+        C_Timer.After(0.5, function()
+            TryInitialOpenSearch(true)
+        end)
+
+        -- End the "initial open" window after startup has settled.
+        C_Timer.After(1.0, function()
+            if state.openCycle ~= thisOpenCycle then
+                return
+            end
+
+            state.awaitingInitialOpenTab = false
+            if state.openedOnOrders == nil then
+                state.openedOnOrders = false
+            end
+        end)
+
         if IsOnOrdersTab(professionsFrame) then
-            ScheduleOrdersTabFilterApply(professionsFrame, true)
+            ScheduleOrdersTabFilterApply(professionsFrame, false)
         end
     end
 
     local function OnProfessionsFrameHide(_, frame)
         RestoreNormalFilters(frame or _G.ProfessionsFrame, true)
+        state.awaitingInitialOpenTab = false
+        state.openSearchTriggered = false
+        state.frameShownAt = 0
+        state.openedOnOrders = nil
+        state.openDetectionExpiry = 0
     end
 
     local function RegisterCallbacks()
@@ -356,7 +563,7 @@ do
             return
         end
 
-        ScheduleOrdersTabFilterApply(frame, true)
+        ScheduleOrdersTabFilterApply(frame, false)
     end
 
     function M:Init()
