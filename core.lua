@@ -202,6 +202,13 @@ local defaults = {
         autoWithdrawTreatise = {
             enabled = false,
         },
+        artisanMoxieBags = {
+            enabled = true,
+            textSize = 22,
+            anchorX = 0,
+            anchorY = 220,
+            positionUnlocked = false,
+        },
     },
 
     alerts = {
@@ -607,6 +614,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.AutoWithdrawTreatise and NX.AutoWithdrawTreatise.Init then
             NX.AutoWithdrawTreatise:Init()
+        end
+        if NX.ArtisanMoxieBags and NX.ArtisanMoxieBags.Init then
+            NX.ArtisanMoxieBags:Init()
         end
         if NX.Minimap and NX.Minimap.Init then
             NX.Minimap:Init()

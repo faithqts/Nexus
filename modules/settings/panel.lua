@@ -323,7 +323,7 @@ local function CreateLandingPanel()
     local portalsBody = CreateBodyLine(portalsHeader, "Portal bar visibility, legacy portal filtering, layout sizing, spacing, and anchor positioning.")
 
     local professionsHeader = CreateHeaderLine(portalsBody, "Professions:")
-    local professionsBody = CreateBodyLine(professionsHeader, "Crafting Order Filter Defaults, Simple First Craft Bonus, and Auto Withdraw Treatise controls.")
+    local professionsBody = CreateBodyLine(professionsHeader, "Crafting Order Filter Defaults, Simple First Craft Bonus, Auto Withdraw Treatise, and Artisan Moxie Bags controls.")
 
     local settingsAnchorsHeader = CreateHeaderLine(professionsBody, "Settings & Anchors:")
     local settingsAnchorsBody = CreateBodyLine(settingsAnchorsHeader, "Shared addon settings, LUA errors, slash command toggles, and unified anchor toggles.")
@@ -2470,6 +2470,109 @@ local function BuildAutoWithdrawTreatiseControls(category)
     )
 end
 
+local function BuildArtisanMoxieBagsControls(category)
+    local function EnsureDB()
+        NX.DB.professions.artisanMoxieBags = NX.DB.professions.artisanMoxieBags or {}
+        local db = NX.DB.professions.artisanMoxieBags
+
+        if db.enabled == nil then db.enabled = true end
+        if db.textSize == nil then db.textSize = 22 end
+        if db.anchorX == nil then db.anchorX = 0 end
+        if db.anchorY == nil then db.anchorY = 220 end
+        if db.positionUnlocked == nil then db.positionUnlocked = false end
+
+        return db
+    end
+
+    local function NotifyChanged()
+        if NX.ArtisanMoxieBags and NX.ArtisanMoxieBags.OnSettingsChanged then
+            NX.ArtisanMoxieBags:OnSettingsChanged()
+        end
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return db.enabled == true
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            db.enabled = v and true or false
+            NotifyChanged()
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_ARTISAN_MOXIE_BAGS_ENABLED",
+            Settings.VarType.Boolean,
+            "Enabled",
+            true,
+            GetValue,
+            SetValue
+        )
+
+        CreateEnabledDisabledDropdown(
+            category,
+            setting,
+            "Shows Collect Moxie Bag reminders in The Bazaar when any tracked Artisan Moxie currency is 600 or higher."
+        )
+    end
+
+    do
+        local function GetValue()
+            local db = EnsureDB()
+            return tonumber(db.textSize) or 22
+        end
+
+        local function SetValue(v)
+            local db = EnsureDB()
+            local n = math.floor((tonumber(v) or 22) + 0.5)
+            if n < 10 then n = 10 end
+            if n > 64 then n = 64 end
+            db.textSize = n
+            NotifyChanged()
+            if NX.ArtisanMoxieBags and NX.ArtisanMoxieBags.RefreshDisplayStyle then
+                NX.ArtisanMoxieBags:RefreshDisplayStyle()
+            end
+        end
+
+        local setting = Settings.RegisterProxySetting(
+            category,
+            "NEXUS_ARTISAN_MOXIE_BAGS_TEXT_SIZE",
+            Settings.VarType.Number,
+            "Text Size",
+            22,
+            GetValue,
+            SetValue
+        )
+
+        local options = Settings.CreateSliderOptions(10, 64, 1)
+        ApplyRightLabel(options, function(v) return string.format("%dpx", v) end)
+        Settings.CreateSlider(category, setting, options, "Adjusts the reminder text size for Artisan Moxie Bags.")
+    end
+
+    do
+        local function GetValue()
+            return not not (NX.DB.professions and NX.DB.professions.artisanMoxieBags and NX.DB.professions.artisanMoxieBags.positionUnlocked)
+        end
+
+        local function SetValue(v)
+            if NX.ArtisanMoxieBags and NX.ArtisanMoxieBags.SetPositionUnlocked then
+                NX.ArtisanMoxieBags:SetPositionUnlocked(v, true)
+            else
+                NX.DB.professions.artisanMoxieBags = NX.DB.professions.artisanMoxieBags or {}
+                NX.DB.professions.artisanMoxieBags.positionUnlocked = not not v
+                NotifyChanged()
+            end
+        end
+
+        CreateToggleActionButton(category, "Show Anchor", function()
+            SetValue(not GetValue())
+        end)
+    end
+end
+
 local function BuildCraftingOrderFilterDefaultsControls(category)
     local function EnsureDB()
         NX.DB.professions.craftingOrderFilterDefaults = NX.DB.professions.craftingOrderFilterDefaults or {}
@@ -3890,6 +3993,17 @@ local function BuildAnchorsControls(category)
             NX.DB.statsPlus.positionUnlocked = not not v
         end
     end)
+
+    AddShowAnchorToggle("Artisan Moxie Bags", function()
+        return not not (NX.DB.professions and NX.DB.professions.artisanMoxieBags and NX.DB.professions.artisanMoxieBags.positionUnlocked)
+    end, function(v)
+        if NX.ArtisanMoxieBags and NX.ArtisanMoxieBags.SetPositionUnlocked then
+            NX.ArtisanMoxieBags:SetPositionUnlocked(v, true)
+        else
+            NX.DB.professions.artisanMoxieBags = NX.DB.professions.artisanMoxieBags or {}
+            NX.DB.professions.artisanMoxieBags.positionUnlocked = not not v
+        end
+    end)
 end
 
 S._registered = S._registered or false
@@ -3995,6 +4109,8 @@ function S:Register()
     BuildCraftingOrderFilterDefaultsControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Auto Withdraw Treatise")
     BuildAutoWithdrawTreatiseControls(professionsCategory)
+    AddSectionHeader(professionsCategory, "Artisan Moxie Bags")
+    BuildArtisanMoxieBagsControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Simple First Craft Bonus")
     BuildSimpleFirstCraftBonusControls(professionsCategory)
 
@@ -4042,6 +4158,9 @@ function S:Open()
             end
             if NX.StatsPlus and NX.StatsPlus.OnSettingsClosed then
                 NX.StatsPlus:OnSettingsClosed()
+            end
+            if NX.ArtisanMoxieBags and NX.ArtisanMoxieBags.OnSettingsClosed then
+                NX.ArtisanMoxieBags:OnSettingsClosed()
             end
         end)
     end

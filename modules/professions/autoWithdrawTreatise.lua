@@ -10,17 +10,17 @@ do
     local ACCOUNT_BANK_TYPE = Enum and Enum.BankType and Enum.BankType.Account
 
     local MIDNIGHT_TREATISE_BY_PROFESSION = {
-        [171] = { itemID = 245755, questID = 95127 }, -- Alchemy
-        [164] = { itemID = 245763, questID = 95128 }, -- Blacksmithing
-        [333] = { itemID = 245759, questID = 95129 }, -- Enchanting
-        [202] = { itemID = 245809, questID = 95138 }, -- Engineering
-        [182] = { itemID = 245761, questID = 95130 }, -- Herbalism
-        [773] = { itemID = 245757, questID = 95131 }, -- Inscription
-        [755] = { itemID = 245760, questID = 95133 }, -- Jewelcrafting
-        [165] = { itemID = 245758, questID = 95134 }, -- Leatherworking
-        [186] = { itemID = 245762, questID = 95135 }, -- Mining
-        [393] = { itemID = 245828, questID = 95136 }, -- Skinning
-        [197] = { itemID = 245756, questID = 95137 }, -- Tailoring
+        [171] = { itemID = 245755, questID = 95127, midnightSkillLineID = 2906, midnightSpellID = 471003 }, -- Alchemy
+        [164] = { itemID = 245763, questID = 95128, midnightSkillLineID = 2907, midnightSpellID = 471004 }, -- Blacksmithing
+        [333] = { itemID = 245759, questID = 95129, midnightSkillLineID = 2909, midnightSpellID = 471006 }, -- Enchanting
+        [202] = { itemID = 245809, questID = 95138, midnightSkillLineID = 2910, midnightSpellID = 471007 }, -- Engineering
+        [182] = { itemID = 245761, questID = 95130, midnightSkillLineID = 2912, midnightSpellID = 471009 }, -- Herbalism
+        [773] = { itemID = 245757, questID = 95131, midnightSkillLineID = 2913, midnightSpellID = 471010 }, -- Inscription
+        [755] = { itemID = 245760, questID = 95133, midnightSkillLineID = 2914, midnightSpellID = 471011 }, -- Jewelcrafting
+        [165] = { itemID = 245758, questID = 95134, midnightSkillLineID = 2915, midnightSpellID = 471012 }, -- Leatherworking
+        [186] = { itemID = 245762, questID = 95135, midnightSkillLineID = 2916, midnightSpellID = 471013 }, -- Mining
+        [393] = { itemID = 245828, questID = 95136, midnightSkillLineID = 2917, midnightSpellID = 471014 }, -- Skinning
+        [197] = { itemID = 245756, questID = 95137, midnightSkillLineID = 2918, midnightSpellID = 471015 }, -- Tailoring
     }
 
     function M:EnsureDB()
@@ -56,24 +56,128 @@ do
         return false
     end
 
-    local function GetActiveProfessionSkillLines()
-        local active = {}
+    local function GetKnownProfessionTradeSkillLines()
+        local known = {}
+
+        if not C_TradeSkillUI or type(C_TradeSkillUI.GetAllProfessionTradeSkillLines) ~= "function" then
+            return known
+        end
+
+        local skillLines = C_TradeSkillUI.GetAllProfessionTradeSkillLines()
+        if type(skillLines) ~= "table" then
+            return known
+        end
+
+        for _, skillLineID in pairs(skillLines) do
+            if skillLineID then
+                known[skillLineID] = true
+            end
+        end
+
+        return known
+    end
+
+    local function GetKnownPrimaryProfessionInfoBySkillLine()
+        local infoBySkillLine = {}
 
         if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then
-            return active
+            return infoBySkillLine
         end
 
         local prof1, prof2 = GetProfessions()
         for _, profIndex in ipairs({ prof1, prof2 }) do
             if profIndex then
-                local _, _, _, _, _, _, skillLine = GetProfessionInfo(profIndex)
-                if skillLine then
-                    active[skillLine] = true
+                local _, _, skillLevel, maxSkillLevel, _, _, skillLineID, bonusSkill, _, _, professionName = GetProfessionInfo(profIndex)
+                if skillLineID then
+                    infoBySkillLine[skillLineID] = {
+                        skillLevel = skillLevel or 0,
+                        maxSkillLevel = maxSkillLevel or 0,
+                        bonusSkill = bonusSkill or 0,
+                        professionName = professionName,
+                    }
                 end
             end
         end
 
-        return active
+        return infoBySkillLine
+    end
+
+    local function IsSpellKnownForPlayer(spellID)
+        if not spellID then
+            return false
+        end
+
+        if C_SpellBook and type(C_SpellBook.IsSpellKnown) == "function" then
+            local ok, known = pcall(C_SpellBook.IsSpellKnown, spellID)
+            if ok and known then
+                return true
+            end
+        end
+
+        if C_Spell and type(C_Spell.IsSpellKnown) == "function" then
+            local ok, known = pcall(C_Spell.IsSpellKnown, spellID)
+            if ok and known then
+                return true
+            end
+        end
+
+        if type(IsPlayerSpell) == "function" and IsPlayerSpell(spellID) then
+            return true
+        end
+
+        return false
+    end
+
+    local function HasRequiredMidnightSkill(baseSkillLineID, treatiseData, knownSkillLines, infoBySkillLine, primaryInfoBySkillLine)
+        local midnightSkillLineID = treatiseData and treatiseData.midnightSkillLineID
+        local midnightSpellID = treatiseData and treatiseData.midnightSpellID
+        if not midnightSkillLineID then
+            return false
+        end
+
+        local hasMidnightSkillLine = knownSkillLines[midnightSkillLineID] == true
+        local isMidnightLearnedBySpell = IsSpellKnownForPlayer(midnightSpellID)
+        local hasMidnightLearned = isMidnightLearnedBySpell or hasMidnightSkillLine
+        local primaryProfessionInfo = primaryInfoBySkillLine[baseSkillLineID]
+
+        if not hasMidnightLearned then
+            return false
+        end
+
+        if not primaryProfessionInfo and not hasMidnightSkillLine then
+            return false
+        end
+
+        local skillLevel
+        local maxSkillLevel
+
+        if hasMidnightSkillLine and C_TradeSkillUI and type(C_TradeSkillUI.GetProfessionInfoBySkillLineID) == "function" then
+            local professionInfo = infoBySkillLine[midnightSkillLineID]
+            if professionInfo == nil then
+                professionInfo = C_TradeSkillUI.GetProfessionInfoBySkillLineID(midnightSkillLineID) or false
+                infoBySkillLine[midnightSkillLineID] = professionInfo
+            end
+
+            if professionInfo ~= false then
+                skillLevel = professionInfo.skillLevel
+                maxSkillLevel = professionInfo.maxSkillLevel
+            end
+        end
+
+        -- Match MKPT behavior: use GetProfessionInfo for live character skill values, then fallback to C_TradeSkillUI.
+        if primaryProfessionInfo then
+            if (primaryProfessionInfo.skillLevel or 0) > 0 then
+                skillLevel = primaryProfessionInfo.skillLevel
+                maxSkillLevel = primaryProfessionInfo.maxSkillLevel
+            end
+        end
+
+        skillLevel = skillLevel or 0
+        if skillLevel < 25 then
+            return false
+        end
+
+        return true
     end
 
     local function FindEmptyBagSlot(reservedSlots)
@@ -132,21 +236,32 @@ do
     local function BuildTreatiseQueue(bankTabs)
         local queue = {}
 
-        local activeProfessionSkillLines = GetActiveProfessionSkillLines()
-        if not next(activeProfessionSkillLines) then
+        local knownSkillLines = GetKnownProfessionTradeSkillLines()
+        local primaryInfoBySkillLine = GetKnownPrimaryProfessionInfoBySkillLine()
+        if not next(knownSkillLines) and not next(primaryInfoBySkillLine) then
             return queue
         end
 
+        local infoBySkillLine = {}
         local wantedItems = {}
-        for skillLine, data in pairs(MIDNIGHT_TREATISE_BY_PROFESSION) do
-            if activeProfessionSkillLines[skillLine] and not IsQuestCompleted(data.questID) then
-                local countInBags = 0
-                if C_Item and C_Item.GetItemCount then
-                    countInBags = C_Item.GetItemCount(data.itemID, false) or 0
-                end
 
-                if countInBags < 1 then
-                    wantedItems[data.itemID] = true
+        for baseSkillLineID, data in pairs(MIDNIGHT_TREATISE_BY_PROFESSION) do
+            local hasPrimaryProfession = primaryInfoBySkillLine[baseSkillLineID] ~= nil
+            local hasMidnightSkillLine = knownSkillLines[data.midnightSkillLineID] == true
+            local hasMidnightLearned = hasMidnightSkillLine or IsSpellKnownForPlayer(data.midnightSpellID)
+
+            if hasPrimaryProfession or hasMidnightLearned then
+                local hasRequiredSkill = HasRequiredMidnightSkill(baseSkillLineID, data, knownSkillLines, infoBySkillLine, primaryInfoBySkillLine)
+
+                if hasRequiredSkill and not IsQuestCompleted(data.questID) then
+                    local countInBags = 0
+                    if C_Item and C_Item.GetItemCount then
+                        countInBags = C_Item.GetItemCount(data.itemID, false) or 0
+                    end
+
+                    if countInBags < 1 then
+                        wantedItems[data.itemID] = true
+                    end
                 end
             end
         end
@@ -158,6 +273,7 @@ do
         local slotsByItem = ScanWarbankSlotsByItem(bankTabs, wantedItems)
         for itemID in pairs(wantedItems) do
             local slots = slotsByItem[itemID]
+
             if slots and #slots > 0 then
                 local slotData = slots[1]
                 table.insert(queue, {

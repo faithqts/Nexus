@@ -37,7 +37,8 @@ The workflows are tightly coupled through shared TOC parsing rules and tag forma
 - When generating a commit/push on request, include a `Release Notes:` section in the commit message body with plain bullet lines only (no `Item 1:` labels), for example:
   - `- Updated TOC`
   - `- Updated Workflow`
-  - `- Added New Module "Auto Withdraw Treatise"`
+  - `- Added New Module Auto Withdraw Treatise`
+- Do not include unescaped inner double quotes in `Release Notes:` bullet text (for example, write `Crafting Order Filter Defaults` instead of `"Crafting Order Filter Defaults"`) to avoid shell-string breakage in automation/webhook steps.
 - Use real newline characters in commit bodies; do not use literal `\n` or PowerShell escape text like `` `n``.
 - In PowerShell, prefer creating a temporary commit message file and using `git commit -F <file>` to preserve multi-line formatting reliably.
 

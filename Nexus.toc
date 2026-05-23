@@ -5,7 +5,7 @@
 ## Category: Quality of Life
 ## X-Category: Quality of Life
 ## Author: Faith
-## Version: 1.0.15
+## Version: 1.0.16
 ## SavedVariables: NexusDB
 ## OptionalDeps: LibSharedMedia-3.0
 
@@ -42,6 +42,7 @@ modules/statsPlus/statsPlus.lua
 modules/professions/craftingOrderFilterDefaults.lua
 modules/professions/simpleFirstCraftBonus.lua
 modules/professions/autoWithdrawTreatise.lua
+modules/professions/artisanMoxieBags.lua
 modules/settings/panel.lua
 modules/system/cVarStateSync.lua
 modules/system/luaErrors.lua
