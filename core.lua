@@ -209,6 +209,9 @@ local defaults = {
             anchorY = 220,
             positionUnlocked = false,
         },
+        moxieOnProfessionFrame = {
+            enabled = true,
+        },
     },
 
     alerts = {
@@ -617,6 +620,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
         end
         if NX.ArtisanMoxieBags and NX.ArtisanMoxieBags.Init then
             NX.ArtisanMoxieBags:Init()
+        end
+        if NX.MoxieOnProfessionFrame and NX.MoxieOnProfessionFrame.Init then
+            NX.MoxieOnProfessionFrame:Init()
         end
         if NX.Minimap and NX.Minimap.Init then
             NX.Minimap:Init()

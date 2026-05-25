@@ -323,7 +323,7 @@ local function CreateLandingPanel()
     local portalsBody = CreateBodyLine(portalsHeader, "Portal bar visibility, legacy portal filtering, layout sizing, spacing, and anchor positioning.")
 
     local professionsHeader = CreateHeaderLine(portalsBody, "Professions:")
-    local professionsBody = CreateBodyLine(professionsHeader, "Crafting Order Filter Defaults, Simple First Craft Bonus, Auto Withdraw Treatise, and Artisan Moxie Bags controls.")
+    local professionsBody = CreateBodyLine(professionsHeader, "Crafting Order Filter Defaults, Simple First Craft Bonus, Auto Withdraw Treatise, Artisan Moxie Bags, and Moxie on Profession Frame controls.")
 
     local settingsAnchorsHeader = CreateHeaderLine(professionsBody, "Settings & Anchors:")
     local settingsAnchorsBody = CreateBodyLine(settingsAnchorsHeader, "Shared addon settings, LUA errors, slash command toggles, and unified anchor toggles.")
@@ -2573,6 +2573,37 @@ local function BuildArtisanMoxieBagsControls(category)
     end
 end
 
+local function BuildMoxieOnProfessionFrameControls(category)
+    local function GetValue()
+        return not not (NX.DB.professions.moxieOnProfessionFrame and NX.DB.professions.moxieOnProfessionFrame.enabled)
+    end
+
+    local function SetValue(v)
+        NX.DB.professions.moxieOnProfessionFrame = NX.DB.professions.moxieOnProfessionFrame or {}
+        NX.DB.professions.moxieOnProfessionFrame.enabled = not not v
+
+        if NX.MoxieOnProfessionFrame and NX.MoxieOnProfessionFrame.OnSettingsChanged then
+            NX.MoxieOnProfessionFrame:OnSettingsChanged()
+        end
+    end
+
+    local setting = Settings.RegisterProxySetting(
+        category,
+        "NEXUS_MOXIE_ON_PROFESSION_FRAME_ENABLED",
+        Settings.VarType.Boolean,
+        "Enabled",
+        true,
+        GetValue,
+        SetValue
+    )
+
+    CreateEnabledDisabledDropdown(
+        category,
+        setting,
+        "Shows current Artisan Moxie values for your two primary professions at the bottom-left of the Professions crafting frame."
+    )
+end
+
 local function BuildCraftingOrderFilterDefaultsControls(category)
     local function EnsureDB()
         NX.DB.professions.craftingOrderFilterDefaults = NX.DB.professions.craftingOrderFilterDefaults or {}
@@ -4111,6 +4142,8 @@ function S:Register()
     BuildAutoWithdrawTreatiseControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Artisan Moxie Bags")
     BuildArtisanMoxieBagsControls(professionsCategory)
+    AddSectionHeader(professionsCategory, "Moxie on Profession Frame")
+    BuildMoxieOnProfessionFrameControls(professionsCategory)
     AddSectionHeader(professionsCategory, "Simple First Craft Bonus")
     BuildSimpleFirstCraftBonusControls(professionsCategory)
 
