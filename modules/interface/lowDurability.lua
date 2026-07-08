@@ -81,7 +81,6 @@ end
 
 LD._inited = LD._inited or false
 LD._shown = LD._shown or false
-LD._elapsed = LD._elapsed or 0
 LD._preview = LD._preview or false
 
 LD._frame = LD._frame or nil
@@ -349,14 +348,6 @@ function LD:Init()
 
     f:SetScript("OnEvent", function()
         self:UpdateState()
-    end)
-
-    f:SetScript("OnUpdate", function(_, dt)
-        self._elapsed = (self._elapsed or 0) + (dt or 0)
-        if self._elapsed >= 1.0 then
-            self._elapsed = 0
-            self:UpdateState()
-        end
     end)
 
     f:RegisterEvent("PLAYER_ENTERING_WORLD")

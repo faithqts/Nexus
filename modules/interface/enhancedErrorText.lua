@@ -104,11 +104,9 @@ function ET:Enable()
     self.frame:RegisterEvent("PLAYER_LOGIN")
     self.frame:SetScript("OnEvent", function()
         self:Apply()
-        self:ShowPreview()
     end)
 
     self:Apply()
-    self:ShowPreview()
 end
 
 function ET:Disable()
@@ -129,11 +127,8 @@ function ET:ApplyConfig()
     if NX.DB.interface.enhancedErrorText.enabled then
         self:Enable()
         self:Apply()
-        self:ShowPreview()
     else
         self:Disable()
-
-        self:ShowPreview()
     end
 end
 

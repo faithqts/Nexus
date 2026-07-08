@@ -385,7 +385,7 @@ function WB:EnsureDisplay()
         displayFrame = FN:CreateAnchorFrame(UIParent, ANCHOR_WIDTH, ANCHOR_HEIGHT, 1, 1)
         displayFrame:SetSize(ANCHOR_WIDTH, ANCHOR_HEIGHT)
     else
-        displayFrame = CreateFrame("Frame", "NexusWarbankFrame", UIParent)
+        displayFrame = CreateFrame("Frame", nil, UIParent)
         displayFrame:SetSize(ANCHOR_WIDTH, ANCHOR_HEIGHT)
     end
 

@@ -1,11 +1,11 @@
-## Interface: 120005
+## Interface: 120007
 ## Title: Nexus
 ## Notes: Quality of Life changes for Midnight.
 ## IconTexture: Interface\AddOns\Nexus\media\icon.tga
 ## Category: Quality of Life
 ## X-Category: Quality of Life
 ## Author: Faith
-## Version: 1.0.17
+## Version: 12.0.7.0
 ## SavedVariables: NexusDB
 ## OptionalDeps: LibSharedMedia-3.0
 

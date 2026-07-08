@@ -38,7 +38,9 @@ local function EnsurePopupHooks()
 end
 
 function M:Apply()
-    EnsurePopupHooks()
+    if NX.DB and NX.DB.system.deleteDialog and NX.DB.system.deleteDialog.enabled then
+        EnsurePopupHooks()
+    end
 end
 
 function M:OnSettingsChanged()

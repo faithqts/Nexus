@@ -245,7 +245,7 @@ function FN:SetSharedVoicePackActor(actor)
     return normalized
 end
 
-function FN:GetVoicePackSoundPaths(actor, filename, addonName)
+function FN:GetVoicePackSoundPath(actor, filename, addonName)
     local soundFile = tostring(filename or "")
     if soundFile == "" then
         return nil
@@ -254,16 +254,12 @@ function FN:GetVoicePackSoundPaths(actor, filename, addonName)
     local safeActor = self:NormalizeVoicePackActor(actor)
     local safeAddon = tostring(addonName or (NX and NX.name) or "Nexus")
 
-    return {
-        string.format("Interface\\AddOns\\%s\\media\\voices\\%s\\%s", safeAddon, safeActor, soundFile),
-        string.format("Interface\\AddOns\\%s\\Media\\voices\\%s\\%s", safeAddon, safeActor, soundFile),
-        string.format("Interface\\AddOns\\%s\\media\\voice\\%s\\%s", safeAddon, safeActor, soundFile),
-        string.format("Interface\\AddOns\\%s\\Media\\voice\\%s\\%s", safeAddon, safeActor, soundFile),
-        string.format("Interface/AddOns/%s/media/voices/%s/%s", safeAddon, safeActor, soundFile),
-        string.format("Interface/AddOns/%s/Media/voices/%s/%s", safeAddon, safeActor, soundFile),
-        string.format("Interface/AddOns/%s/media/voice/%s/%s", safeAddon, safeActor, soundFile),
-        string.format("Interface/AddOns/%s/Media/voice/%s/%s", safeAddon, safeActor, soundFile),
-    }
+    return string.format("Interface\\AddOns\\%s\\media\\voices\\%s\\%s", safeAddon, safeActor, soundFile)
+end
+
+function FN:GetVoicePackSoundPaths(actor, filename, addonName)
+    local path = self:GetVoicePackSoundPath(actor, filename, addonName)
+    return path and { path } or nil
 end
 
 function FN:IsKeystoneFrameVisible()
@@ -327,7 +323,7 @@ end
 function FN:FindKeystoneInBags(itemIDs)
     if type(itemIDs) ~= "table" then return nil end
     for _, itemID in ipairs(itemIDs) do
-        local c = GetItemCount(itemID, false)
+        local c = C_Item and C_Item.GetItemCount and C_Item.GetItemCount(itemID, false) or 0
         if c and c > 0 then
             return itemID
         end
@@ -342,11 +338,6 @@ function FN:GetCVarValue(name)
 
     if C_CVar and C_CVar.GetCVar then
         local ok, value = pcall(C_CVar.GetCVar, name)
-        if ok then
-            return value
-        end
-    elseif GetCVar then
-        local ok, value = pcall(GetCVar, name)
         if ok then
             return value
         end
@@ -373,11 +364,6 @@ function FN:SetCVarValue(name, value)
 
     if C_CVar and C_CVar.SetCVar then
         pcall(C_CVar.SetCVar, name, value)
-        return
-    end
-
-    if SetCVar then
-        pcall(SetCVar, name, value)
     end
 end
 

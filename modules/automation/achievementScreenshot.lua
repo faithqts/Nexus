@@ -2,11 +2,19 @@
 NX.AchievementScreenshot = NX.AchievementScreenshot or {}
 local AS = NX.AchievementScreenshot
 
+local function GetDefaultDelaySeconds()
+    return NX.Defaults
+        and NX.Defaults.automation
+        and NX.Defaults.automation.achievementScreenshot
+        and NX.Defaults.automation.achievementScreenshot.delaySeconds
+        or 0.5
+end
+
 local function EnsureDB()
     NX.DB.automation.achievementScreenshot = NX.DB.automation.achievementScreenshot or {}
     local db = NX.DB.automation.achievementScreenshot
     if db.enabled == nil then db.enabled = false end
-    if db.delaySeconds == nil then db.delaySeconds = 1.6 end
+    if db.delaySeconds == nil then db.delaySeconds = GetDefaultDelaySeconds() end
 end
 
 function AS:Queue()
@@ -30,7 +38,7 @@ function AS:Queue()
 
         self._queued = self._queued - 1
 
-        local delay = tonumber(NX.DB.automation.achievementScreenshot and NX.DB.automation.achievementScreenshot.delaySeconds) or 1.6
+        local delay = tonumber(NX.DB.automation.achievementScreenshot and NX.DB.automation.achievementScreenshot.delaySeconds) or GetDefaultDelaySeconds()
         if delay < 0 then delay = 0 end
 
         self._timer = C_Timer.NewTimer(delay, function()

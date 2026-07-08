@@ -35,7 +35,7 @@ local FONTS = {
     { "Ubuntu (Regular)",         "ubuntu_regular.ttf" },
     { "Ubuntu (Bold)",            "ubuntu_bold.ttf" },
     { "Vodafone",                 "vodafone.otf" },
-    { "Vodafone (Bold)",          "vodafone_bold.ttf" },
+    { "Vodafone (Bold)",          "vodafone_bold.otf" },
 }
 
 local STATUS_BARS = {

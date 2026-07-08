@@ -6,7 +6,12 @@ CM._rlRegistered = CM._rlRegistered or false
 CM._rlConflictWarned = CM._rlConflictWarned or false
 CM._waRegistered = CM._waRegistered or false
 CM._waConflictWarned = CM._waConflictWarned or false
+CM._cdConflictWarned = CM._cdConflictWarned or false
+CM._editConflictWarned = CM._editConflictWarned or false
 CM._utilitySlashesRegistered = CM._utilitySlashesRegistered or false
+CM._slashOwnerCache = CM._slashOwnerCache or {}
+
+local SLASH_CACHE_MISS = false
 
 local function FindSlashOwner(alias)
     if type(alias) ~= "string" or alias == "" then
@@ -14,16 +19,33 @@ local function FindSlashOwner(alias)
     end
 
     local needle = string.lower(alias)
-    for key, value in pairs(_G) do
-        if type(key) == "string"
-            and type(value) == "string"
-            and string.match(key, "^SLASH_.+%d+$")
-            and string.lower(value) == needle then
-            return key
+    local cached = CM._slashOwnerCache[needle]
+    if cached ~= nil then
+        return cached or nil
+    end
+
+    for token in pairs(SlashCmdList or {}) do
+        local index = 1
+        while true do
+            local key = string.format("SLASH_%s%d", token, index)
+            local value = _G[key]
+            if value == nil then
+                break
+            end
+            if type(value) == "string" and string.lower(value) == needle then
+                CM._slashOwnerCache[needle] = key
+                return key
+            end
+            index = index + 1
         end
     end
 
+    CM._slashOwnerCache[needle] = SLASH_CACHE_MISS
     return nil
+end
+
+local function ClearSlashOwnerCache()
+    CM._slashOwnerCache = {}
 end
 
 local function GetSlashOwnerDisplay(owner)
@@ -202,31 +224,27 @@ function CM:IsQuickEditModeSlashEnabled()
     return NX.DB.common.options.quickEditModeSlash ~= false
 end
 
-local function ForceClaimSlashAlias(alias)
-    if type(alias) ~= "string" or alias == "" then
-        return
-    end
-
-    local needle = string.lower(alias)
-    for key, value in pairs(_G) do
-        if type(key) == "string" and type(value) == "string" and string.match(key, "^SLASH_.+%d+$") then
-            if string.lower(value) == needle then
-                _G[key] = nil
-            end
-        end
-    end
-end
-
 local function RegisterSlashAliases(baseName, aliases)
     local idx = 1
 
     for _, alias in ipairs(aliases) do
-        ForceClaimSlashAlias(alias)
         _G[string.format("SLASH_%s%d", baseName, idx)] = alias
         idx = idx + 1
     end
 
+    ClearSlashOwnerCache()
     return idx > 1
+end
+
+local function FindSlashAliasConflict(aliases, ownBaseName)
+    local ownPattern = "^SLASH_" .. tostring(ownBaseName or "") .. "%d+$"
+    for _, alias in ipairs(aliases) do
+        local owner = FindSlashOwner(alias)
+        if owner and not string.match(owner, ownPattern) then
+            return alias, owner
+        end
+    end
+    return nil, nil
 end
 
 local function EnsureEscClosable(frameOrName)
@@ -355,15 +373,35 @@ end
 function CM:RegisterUtilitySlashes()
     if self._utilitySlashesRegistered then return end
 
-    local cdRegistered = RegisterSlashAliases("NEXUS_CD", { "/cd", "/cdm" })
-    if cdRegistered then
+    local cdAliases = { "/cd", "/cdm" }
+    local cdAlias, cdOwner = FindSlashAliasConflict(cdAliases, "NEXUS_CD")
+    if cdAlias then
+        if NX.DB then
+            NX.DB.common.options.quickCdmSlash = false
+        end
+        if not self._cdConflictWarned then
+            self._cdConflictWarned = true
+            local ownerLabel = GetSlashOwnerDisplay(cdOwner) or cdOwner
+            print(string.format("|cffffd200Nexus:|r %s is already registered by %s. Cooldown Manager slash aliases not enabled.", cdAlias, ownerLabel))
+        end
+    elseif RegisterSlashAliases("NEXUS_CD", cdAliases) then
         SlashCmdList["NEXUS_CD"] = HandleQuickCdmSlash
     end
 
     self:SyncWeakAurasCdmSlash()
 
-    local emRegistered = RegisterSlashAliases("NEXUS_EDITMODE", { "/em", "/edit", "/editmode", "/editmenu" })
-    if emRegistered then
+    local editAliases = { "/em", "/edit", "/editmode", "/editmenu" }
+    local editAlias, editOwner = FindSlashAliasConflict(editAliases, "NEXUS_EDITMODE")
+    if editAlias then
+        if NX.DB then
+            NX.DB.common.options.quickEditModeSlash = false
+        end
+        if not self._editConflictWarned then
+            self._editConflictWarned = true
+            local ownerLabel = GetSlashOwnerDisplay(editOwner) or editOwner
+            print(string.format("|cffffd200Nexus:|r %s is already registered by %s. Edit Mode slash aliases not enabled.", editAlias, ownerLabel))
+        end
+    elseif RegisterSlashAliases("NEXUS_EDITMODE", editAliases) then
         SlashCmdList["NEXUS_EDITMODE"] = function()
             if CM and CM.IsQuickEditModeSlashEnabled and not CM:IsQuickEditModeSlashEnabled() then
                 return

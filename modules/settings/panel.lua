@@ -1804,13 +1804,19 @@ local function BuildAchievementScreenshotControls(category)
     end
 
     do
+        local defaultDelay = NX.Defaults
+            and NX.Defaults.automation
+            and NX.Defaults.automation.achievementScreenshot
+            and NX.Defaults.automation.achievementScreenshot.delaySeconds
+            or 0.5
+
         local function GetValue()
-            return tonumber(NX.DB.automation.achievementScreenshot and NX.DB.automation.achievementScreenshot.delaySeconds) or 1.6
+            return tonumber(NX.DB.automation.achievementScreenshot and NX.DB.automation.achievementScreenshot.delaySeconds) or defaultDelay
         end
 
         local function SetValue(v)
             NX.DB.automation.achievementScreenshot = NX.DB.automation.achievementScreenshot or {}
-            NX.DB.automation.achievementScreenshot.delaySeconds = tonumber(v) or 1.6
+            NX.DB.automation.achievementScreenshot.delaySeconds = tonumber(v) or defaultDelay
             if NX.AchievementScreenshot and NX.AchievementScreenshot.OnSettingsChanged then
                 NX.AchievementScreenshot:OnSettingsChanged()
             end
@@ -1821,7 +1827,7 @@ local function BuildAchievementScreenshotControls(category)
             "NEXUS_ACH_SCREENSHOT_DELAY",
             Settings.VarType.Number,
             "Delay",
-            1.6,
+            defaultDelay,
             GetValue,
             SetValue
         )
@@ -2074,6 +2080,12 @@ local function BuildEnhancedErrorTextControls(category)
 
         CreateEnabledDisabledDropdown(category, setting, "Use OUTLINE font flags for UIErrorsFrame.")
     end
+
+    CreateToggleActionButton(category, "Preview", function()
+        if NX.EnhancedErrorText and NX.EnhancedErrorText.ShowPreview then
+            NX.EnhancedErrorText:ShowPreview()
+        end
+    end, "Shows one sample UIErrorsFrame message with the current settings.")
 end
 
 local function BuildCleanObjectiveTrackerControls(category)

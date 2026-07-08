@@ -96,7 +96,7 @@ local hTex, vTex
 local function CreateUI()
     if frame then return end
 
-    frame = CreateFrame("Frame", "NEXUSCrosshairFrame", UIParent)
+    frame = CreateFrame("Frame", nil, UIParent)
     frame:SetFrameStrata("TOOLTIP")
     frame:SetFrameLevel(9999)
     frame:EnableMouse(false)

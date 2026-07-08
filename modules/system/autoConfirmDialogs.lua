@@ -5,6 +5,12 @@ NX.AutoConfirmDialogs = NX.AutoConfirmDialogs or {}
 local M = NX.AutoConfirmDialogs
 local popupHooked
 
+local function DismissPopup(which)
+    if StaticPopup_Hide then
+        StaticPopup_Hide(which)
+    end
+end
+
 local function ShouldAutoConfirm(which)
     if not which then return false end
     if not NX.DB or not NX.DB.system.autoConfirmDialogs then return false end
@@ -23,46 +29,23 @@ local function ShouldAutoConfirm(which)
     return false
 end
 
-local function GetPreferredButtonIndex(which)
-    if which == "REPLACE_ENCHANT" then
-        return 2
-    end
-
-    return 1
-end
-
-local function GetPopupButton(frame, index)
-    if not frame or not index then
-        return nil
-    end
-
-    local btn = frame["button" .. tostring(index)] or (frame.GetButton and frame:GetButton(index))
-    if btn then
-        return btn
-    end
-
-    if frame.GetName then
-        local name = frame:GetName()
-        if name and name ~= "" then
-            return _G[string.format("%sButton%d", name, index)]
-        end
-    end
-
-    return nil
-end
-
 local function HandleAutoConfirmDialog(frame)
     if not frame or not frame.which then return end
     if not ShouldAutoConfirm(frame.which) then return end
 
-    local preferredIndex = GetPreferredButtonIndex(frame.which)
-    local btn = GetPopupButton(frame, preferredIndex)
-    if not btn then
-        btn = GetPopupButton(frame, 1)
+    if frame.which == "REPLACE_ENCHANT" then
+        if ReplaceEnchant then
+            ReplaceEnchant()
+            DismissPopup("REPLACE_ENCHANT")
+        end
+        return
     end
 
-    if btn and btn.Click then
-        btn:Click()
+    if frame.which == "CONFIRM_ACCEPT_SOCKETS" then
+        if C_ItemSocketInfo and C_ItemSocketInfo.AcceptSockets then
+            C_ItemSocketInfo.AcceptSockets()
+            DismissPopup("CONFIRM_ACCEPT_SOCKETS")
+        end
     end
 end
 
@@ -83,7 +66,9 @@ local function EnsurePopupHooks()
 end
 
 function M:Apply()
-    EnsurePopupHooks()
+    if NX.DB and NX.DB.system.autoConfirmDialogs and NX.DB.system.autoConfirmDialogs.enabled then
+        EnsurePopupHooks()
+    end
 end
 
 function M:OnSettingsChanged()

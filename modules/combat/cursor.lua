@@ -12,6 +12,7 @@ local TEXTURE_PATHS = {
 }
 
 local cursorFrame
+local runtimeConfig
 local accum = 0
 local lastX, lastY
 local effectTime = 0
@@ -113,24 +114,54 @@ function M:EnsureDB()
     return db
 end
 
+local function BuildRuntimeConfig(db)
+    local r, g, b, aHex = ParseHexColor(db.color)
+    local alpha = Clamp01((db.alpha or 1.0) * (aHex or 1.0))
+    local hz = math.floor(FN:ClampNumber(tonumber(db.hz) or 120, 30, 600) / 5 + 0.5) * 5
+    local textureName = NormalizeTextureName(db.texture)
+
+    return {
+        enabled = db.enabled == true,
+        size = db.size,
+        alpha = alpha,
+        strata = db.strata,
+        textureName = textureName,
+        texturePath = TEXTURE_PATHS[textureName] or TEXTURE_PATHS[DEFAULT_TEXTURE],
+        hz = hz,
+        step = 1 / hz,
+        animationsEnabled = db.animationsEnabled == true,
+        pulsing = db.pulsing == true,
+        flashing = db.flashing == true,
+        rotating = db.rotating == true,
+        pulseSpeedHz = db.pulseSpeedHz,
+        flashSpeedHz = db.flashSpeedHz,
+        rotateRps = db.rotateRps,
+        r = r,
+        g = g,
+        b = b,
+    }
+end
+
+function M:RefreshConfig()
+    runtimeConfig = BuildRuntimeConfig(self:EnsureDB())
+    return runtimeConfig
+end
+
 function M:ApplySettings()
     if not cursorFrame then
         return
     end
 
-    local db = self:EnsureDB()
-    cursorFrame:SetSize(db.size, db.size)
-    cursorFrame:SetFrameStrata(db.strata)
+    local cfg = runtimeConfig or self:RefreshConfig()
+    cursorFrame:SetSize(cfg.size, cfg.size)
+    cursorFrame:SetFrameStrata(cfg.strata)
 
-    local texturePath = TEXTURE_PATHS[NormalizeTextureName(db.texture)] or TEXTURE_PATHS[DEFAULT_TEXTURE]
-    cursorFrame.tex:SetTexture(texturePath)
+    cursorFrame.tex:SetTexture(cfg.texturePath)
     cursorFrame.tex:ClearAllPoints()
     cursorFrame.tex:SetPoint("CENTER", cursorFrame, "CENTER", 0, 0)
-    cursorFrame.tex:SetSize(db.size, db.size)
+    cursorFrame.tex:SetSize(cfg.size, cfg.size)
 
-    local r, g, b, aHex = ParseHexColor(db.color)
-    local alpha = Clamp01((db.alpha or 1.0) * (aHex or 1.0))
-    cursorFrame.tex:SetVertexColor(r, g, b, alpha)
+    cursorFrame.tex:SetVertexColor(cfg.r, cfg.g, cfg.b, cfg.alpha)
     cursorFrame.tex:SetRotation(0)
 end
 
@@ -139,30 +170,31 @@ function M:ApplyVisualEffects(elapsed)
         return
     end
 
-    local db = self:EnsureDB()
-    effectTime = effectTime + (tonumber(elapsed) or 0)
-
-    local r, g, b, aHex = ParseHexColor(db.color)
-    local baseAlpha = Clamp01((db.alpha or 1.0) * (aHex or 1.0))
-
-    local finalSize = db.size
-    if db.animationsEnabled and db.pulsing then
-        local pulseWave = math.sin(effectTime * math.pi * 2 * db.pulseSpeedHz)
-        finalSize = db.size * (1 + (PULSE_SCALE_DELTA * pulseWave))
+    local cfg = runtimeConfig or self:RefreshConfig()
+    if not cfg.animationsEnabled then
+        return
     end
 
-    local finalAlpha = baseAlpha
-    if db.animationsEnabled and db.flashing then
-        local flashWave = 0.5 + 0.5 * math.sin(effectTime * math.pi * 2 * db.flashSpeedHz)
+    effectTime = effectTime + (tonumber(elapsed) or 0)
+
+    local finalSize = cfg.size
+    if cfg.pulsing then
+        local pulseWave = math.sin(effectTime * math.pi * 2 * cfg.pulseSpeedHz)
+        finalSize = cfg.size * (1 + (PULSE_SCALE_DELTA * pulseWave))
+    end
+
+    local finalAlpha = cfg.alpha
+    if cfg.flashing then
+        local flashWave = 0.5 + 0.5 * math.sin(effectTime * math.pi * 2 * cfg.flashSpeedHz)
         local flashMult = FLASH_MIN_MULT + ((1 - FLASH_MIN_MULT) * flashWave)
-        finalAlpha = Clamp01(baseAlpha * flashMult)
+        finalAlpha = Clamp01(cfg.alpha * flashMult)
     end
 
     cursorFrame.tex:SetSize(finalSize, finalSize)
-    cursorFrame.tex:SetVertexColor(r, g, b, finalAlpha)
+    cursorFrame.tex:SetVertexColor(cfg.r, cfg.g, cfg.b, finalAlpha)
 
-    if db.animationsEnabled and db.rotating then
-        local angle = (effectTime * math.pi * 2 * db.rotateRps) % (math.pi * 2)
+    if cfg.rotating then
+        local angle = (effectTime * math.pi * 2 * cfg.rotateRps) % (math.pi * 2)
         cursorFrame.tex:SetRotation(angle)
     else
         cursorFrame.tex:SetRotation(0)
@@ -174,7 +206,7 @@ function M:EnsureFrame()
         return
     end
 
-    cursorFrame = CreateFrame("Frame", "NEXUSMouseCursorFrame", UIParent)
+    cursorFrame = CreateFrame("Frame", nil, UIParent)
     cursorFrame:SetClampedToScreen(true)
     cursorFrame:EnableMouse(false)
     cursorFrame:SetFrameStrata("TOOLTIP")
@@ -192,8 +224,8 @@ function M:EnsureFrame()
 end
 
 function M:UpdatePosition(force)
-    local db = self:EnsureDB()
-    if not cursorFrame or not db.enabled then
+    local cfg = runtimeConfig or self:RefreshConfig()
+    if not cursorFrame or not cfg.enabled then
         return
     end
 
@@ -210,25 +242,62 @@ function M:UpdatePosition(force)
     cursorFrame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", px, py)
 end
 
+local function CursorOnUpdate(_, elapsed)
+    local cfg = runtimeConfig
+    if not cfg or not cfg.enabled then
+        return
+    end
+
+    if cfg.animationsEnabled then
+        M:ApplyVisualEffects(elapsed)
+    end
+
+    accum = accum + elapsed
+    if accum < cfg.step then
+        return
+    end
+    accum = accum % cfg.step
+
+    M:UpdatePosition(false)
+end
+
+function M:SetOnUpdateEnabled(enabled)
+    if not cursorFrame then
+        return
+    end
+
+    if enabled then
+        cursorFrame:SetScript("OnUpdate", CursorOnUpdate)
+    else
+        cursorFrame:SetScript("OnUpdate", nil)
+        accum = 0
+    end
+end
+
 function M:SetEnabled(on)
     local db = self:EnsureDB()
     db.enabled = on and true or false
+    self:RefreshConfig()
 
     self:EnsureFrame()
     if db.enabled then
         cursorFrame:Show()
+        self:SetOnUpdateEnabled(true)
         self:UpdatePosition(true)
     else
+        self:SetOnUpdateEnabled(false)
         cursorFrame:Hide()
     end
 end
 
 function M:OnSettingsChanged()
-    self:EnsureDB()
+    self:RefreshConfig()
     self:EnsureFrame()
     self:ApplySettings()
-    self:ApplyVisualEffects(0)
-    self:SetEnabled(NX.DB.combat.mouseCursor.enabled)
+    if runtimeConfig and runtimeConfig.animationsEnabled then
+        self:ApplyVisualEffects(0)
+    end
+    self:SetEnabled(runtimeConfig and runtimeConfig.enabled)
 end
 
 function M:HandleNxSlash(msg)
@@ -312,6 +381,7 @@ function M:HandleNxSlash(msg)
             return true
         end
         db.hz = math.floor(FN:ClampNumber(value, 30, 600) / 5 + 0.5) * 5
+        self:OnSettingsChanged()
         print("Mouse Cursor: hz = " .. tostring(db.hz))
         return true
     end
@@ -329,32 +399,11 @@ function M:HandleNxSlash(msg)
 end
 
 function M:Init()
-    self:EnsureDB()
+    self:RefreshConfig()
     self:EnsureFrame()
 
-    if not cursorFrame:GetScript("OnUpdate") then
-        cursorFrame:SetScript("OnUpdate", function(_, elapsed)
-            local db = M:EnsureDB()
-            if not db.enabled then
-                return
-            end
-
-            M:ApplyVisualEffects(elapsed)
-
-            accum = accum + elapsed
-            local hz = math.floor(FN:ClampNumber(tonumber(db.hz) or 120, 30, 600) / 5 + 0.5) * 5
-            local step = 1 / hz
-            if accum < step then
-                return
-            end
-            accum = accum % step
-
-            M:UpdatePosition(false)
-        end)
-    end
-
     self:ApplySettings()
-    self:SetEnabled(NX.DB.combat.mouseCursor.enabled)
+    self:SetEnabled(runtimeConfig and runtimeConfig.enabled)
 end
 
 SLASH_NEXUS_MOUSECURSOR1 = "/mouse"

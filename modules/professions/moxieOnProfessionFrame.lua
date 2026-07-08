@@ -134,8 +134,10 @@ do
     end
 
     function M:LoadProfessionUI()
-        if UIParentLoadAddOn then
-            pcall(UIParentLoadAddOn, "Blizzard_Professions")
+        if C_AddOns and C_AddOns.LoadAddOn then
+            if not (C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_Professions")) then
+                pcall(C_AddOns.LoadAddOn, "Blizzard_Professions")
+            end
         end
     end
 
@@ -333,7 +335,6 @@ do
 
     function M:Init()
         self:EnsureDB()
-        self:LoadProfessionUI()
 
         if frame then
             self:EnsureHooks()
@@ -370,6 +371,7 @@ do
             M:EnsureHooks()
 
             if event == "TRADE_SKILL_SHOW" then
+                M:LoadProfessionUI()
                 C_Timer.After(0, function()
                     M:UpdateDisplay()
                 end)

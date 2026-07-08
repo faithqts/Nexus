@@ -6,7 +6,6 @@ NX.Constants.VAULT_SPELL_ID = 449976
 NX.Constants.VAULT_OFFSET_X = 0
 
 NX.name = "Nexus"
-NX.modules = NX.modules or {}
 
 NexusDB = NexusDB or {}
 
@@ -257,6 +256,8 @@ local defaults = {
     },
 }
 
+NX.Defaults = defaults
+
 local function ApplyDefaults(dst, src)
     for k, v in pairs(src) do
         if type(v) == "table" then
@@ -281,9 +282,6 @@ function CV:GetRaw(name)
         value = NX.Functions:GetCVarValue(name)
     elseif C_CVar and C_CVar.GetCVar then
         local ok, result = pcall(C_CVar.GetCVar, name)
-        if ok then value = result end
-    elseif GetCVar then
-        local ok, result = pcall(GetCVar, name)
         if ok then value = result end
     end
 
@@ -310,10 +308,6 @@ function CV:SetBool(name, enabled)
     local value = enabled and "1" or "0"
     if C_CVar and C_CVar.SetCVar then
         pcall(C_CVar.SetCVar, name, value)
-        return
-    end
-    if SetCVar then
-        pcall(SetCVar, name, value)
     end
 end
 
@@ -481,24 +475,6 @@ function C:UpdateSettingsPanelMovable()
     end
 end
 
-local function RegisterModule(name, tbl)
-    if not name or type(name) ~= "string" then return end
-    if type(tbl) ~= "table" then return end
-    NX.modules[name] = tbl
-end
-
-local function CallModule(method, ...)
-    for _, mod in pairs(NX.modules) do
-        if type(mod) == "table" and type(mod[method]) == "function" then
-            pcall(mod[method], mod, ...)
-        end
-    end
-end
-
-if NX.Vault then
-    RegisterModule("Vault", NX.Vault)
-end
-
 local frame = CreateFrame("Frame")
 
 frame:SetScript("OnEvent", function(_, event, ...)
@@ -640,7 +616,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
             NX.BankWarboundItems:Init()
         end
 
-        CallModule("OnEvent", event, ...)
         return
     end
 
@@ -663,8 +638,6 @@ frame:SetScript("OnEvent", function(_, event, ...)
     if NX.Portals and NX.Portals.OnEvent then
         NX.Portals:OnEvent(event, ...)
     end
-
-    CallModule("OnEvent", event, ...)
 end)
 
 frame:RegisterEvent("PLAYER_LOGIN")
@@ -676,18 +649,11 @@ frame:RegisterEvent("ENCOUNTER_END")
 frame:RegisterEvent("CHALLENGE_MODE_START")
 frame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 frame:RegisterEvent("CHALLENGE_MODE_RESET")
+frame:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
 
-frame:RegisterEvent("START_TIMER")
-frame:RegisterEvent("GROUP_ROSTER_UPDATE")
-frame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
-frame:RegisterEvent("ROLE_CHANGED_INFORM")
-frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-frame:RegisterEvent("CHAT_MSG_PARTY")
-frame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
 frame:RegisterEvent("SPELLS_CHANGED")
-frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 
 SLASH_NEXUS1 = "/nx"
 SLASH_NEXUS2 = "/nexus"

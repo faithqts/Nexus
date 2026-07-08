@@ -3,14 +3,15 @@ NX.WaypointHighlightQuestMarker = NX.WaypointHighlightQuestMarker or {}
 local WHQM = NX.WaypointHighlightQuestMarker
 
 local questMarkerTicker
+local questMarkerEventFrame
 local questMarkerFrame
 local questMarkerTexture
 local questMarkerOutlineTexture
-local questMarkerDistanceReparented
 
 local WAYPOINT_MARKER_STYLE_DEFAULT = "default"
 local WAYPOINT_MARKER_STYLE_HUNTERS_MARK = "huntersMark"
 local WAYPOINT_HUNTERS_MARK_TEXTURE = "Interface\\AddOns\\Nexus\\media\\textures\\waypoint\\huntersMark.tga"
+local WAYPOINT_MARKER_TICK_SECONDS = 2.0
 
 local function NormalizeMarkerStyle(value)
     local style = tostring(value or WAYPOINT_MARKER_STYLE_DEFAULT)
@@ -111,7 +112,6 @@ function WHQM:UpdateHighlightedQuestMarker()
 
     local enabled = NX.DB and NX.DB.interface.waypointTracking and NX.DB.interface.waypointTracking.highlightedQuestMarker
     local stf = SuperTrackedFrame
-    local distanceText = stf and stf.DistanceText
 
     local shouldShow = false
     if enabled and stf and stf.IsVisible and stf.GetAlpha then
@@ -131,22 +131,24 @@ function WHQM:UpdateHighlightedQuestMarker()
             end
             questMarkerFrame:Show()
         end
-
-        if distanceText and distanceText.SetParent and distanceText.GetParent and distanceText:GetParent() ~= UIParent then
-            distanceText:SetParent(UIParent)
-            questMarkerDistanceReparented = true
-        end
         return
     end
 
     if questMarkerFrame then
         questMarkerFrame:Hide()
     end
+end
 
-    if questMarkerDistanceReparented and distanceText and distanceText.SetParent then
-        distanceText:SetParent(stf)
-        questMarkerDistanceReparented = false
+local function EnsureQuestMarkerEventFrame()
+    if questMarkerEventFrame then
+        return questMarkerEventFrame
     end
+
+    questMarkerEventFrame = CreateFrame("Frame")
+    questMarkerEventFrame:SetScript("OnEvent", function()
+        WHQM:UpdateHighlightedQuestMarker()
+    end)
+    return questMarkerEventFrame
 end
 
 function WHQM:StopHighlightedQuestMarker()
@@ -154,17 +156,24 @@ function WHQM:StopHighlightedQuestMarker()
         questMarkerTicker:Cancel()
     end
     questMarkerTicker = nil
+    if questMarkerEventFrame then
+        questMarkerEventFrame:UnregisterAllEvents()
+    end
     self:UpdateHighlightedQuestMarker()
 end
 
 function WHQM:StartHighlightedQuestMarker()
-    if questMarkerTicker then
-        return
-    end
+    local frame = EnsureQuestMarkerEventFrame()
+    frame:RegisterEvent("SUPER_TRACKING_CHANGED")
+    frame:RegisterEvent("SUPER_TRACKING_PATH_UPDATED")
+    frame:RegisterEvent("USER_WAYPOINT_UPDATED")
+    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
-    questMarkerTicker = C_Timer.NewTicker(0.25, function()
-        self:UpdateHighlightedQuestMarker()
-    end)
+    if not questMarkerTicker then
+        questMarkerTicker = C_Timer.NewTicker(WAYPOINT_MARKER_TICK_SECONDS, function()
+            self:UpdateHighlightedQuestMarker()
+        end)
+    end
 
     self:UpdateHighlightedQuestMarker()
 end

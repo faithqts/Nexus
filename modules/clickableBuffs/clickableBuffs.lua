@@ -15,11 +15,13 @@ local ICON_BORDER_SIZE = 1
 local ANCHOR_STEP_PX = 1
 local ANCHOR_EXTRA_VERTICAL_PADDING = 20
 local ANCHOR_LABEL_FONT_SIZE = 16
+local REFRESH_DEBOUNCE_SECONDS = 0.2
 
 CB.Anchor = CB.Anchor or nil
 CB.DragHandle = CB.DragHandle or nil
 CB.Buttons = CB.Buttons or {}
 CB.pendingRefresh = CB.pendingRefresh or false
+CB.refreshScheduled = CB.refreshScheduled or false
 CB.AnchorDisplayName = CB.AnchorDisplayName or "Clickable Buffs"
 
 CB.tracked_spells_items = {
@@ -104,9 +106,53 @@ CB.tracked_spells_items = {
     { itemID = 222503, spellName = "Refulgent Whetstone", text = "Weapon\nBuff", oil = true },
 }
 
-local function HasPlayerAuraBySpellID(spellID)
+local function BuildPlayerAuraSnapshot()
+    if not (AuraUtil and AuraUtil.ForEachAura) then
+        return nil
+    end
+
+    local snapshot = {
+        spellIDs = {},
+        names = {},
+    }
+
+    local ok = pcall(function()
+        AuraUtil.ForEachAura("player", "HELPFUL", nil, function(auraData, ...)
+            if type(auraData) ~= "table" then
+                local name = auraData
+                local spellID = select(9, ...)
+                if spellID then
+                    snapshot.spellIDs[spellID] = true
+                end
+                if name then
+                    snapshot.names[name] = true
+                end
+                return false
+            end
+            if auraData.spellId then
+                snapshot.spellIDs[auraData.spellId] = true
+            end
+            if auraData.name then
+                snapshot.names[auraData.name] = true
+            end
+            return false
+        end, true)
+    end)
+
+    if not ok then
+        return nil
+    end
+
+    return snapshot
+end
+
+local function HasPlayerAuraBySpellID(spellID, snapshot)
     if not spellID then
         return false
+    end
+
+    if snapshot then
+        return snapshot.spellIDs[spellID] == true
     end
 
     if GetPlayerAuraBySpellID then
@@ -135,8 +181,16 @@ local function HasPlayerAuraBySpellID(spellID)
     return false
 end
 
-local function HasPlayerAuraByName(name)
-    if not name or name == "" or not AuraUtil or not AuraUtil.FindAuraByName then
+local function HasPlayerAuraByName(name, snapshot)
+    if not name or name == "" then
+        return false
+    end
+
+    if snapshot then
+        return snapshot.names[name] == true
+    end
+
+    if not AuraUtil or not AuraUtil.FindAuraByName then
         return false
     end
 
@@ -144,18 +198,18 @@ local function HasPlayerAuraByName(name)
     return ok and aura ~= nil
 end
 
-local function HasPlayerAuraForEntry(entry)
+local function HasPlayerAuraForEntry(entry, snapshot)
     if type(entry) ~= "table" then
         return false
     end
 
-    if entry.spellID and HasPlayerAuraBySpellID(entry.spellID) then
+    if entry.spellID and HasPlayerAuraBySpellID(entry.spellID, snapshot) then
         return true
     end
 
     if type(entry.altSpellIDs) == "table" then
         for _, spellID in ipairs(entry.altSpellIDs) do
-            if type(spellID) == "number" and HasPlayerAuraBySpellID(spellID) then
+            if type(spellID) == "number" and HasPlayerAuraBySpellID(spellID, snapshot) then
                 return true
             end
         end
@@ -190,16 +244,7 @@ local function HasItemInBags(itemID)
 
     if C_Item and C_Item.GetItemCount then
         local ok, count = pcall(C_Item.GetItemCount, itemID, false)
-        if ok and (count or 0) > 0 then
-            return true
-        end
-    end
-
-    if GetItemCount then
-        local ok, count = pcall(GetItemCount, itemID, false)
-        if ok and (count or 0) > 0 then
-            return true
-        end
+        return ok and (count or 0) > 0
     end
 
     return false
@@ -229,7 +274,7 @@ local function IsWeaponEquipLocation(equipLoc)
 end
 
 local function IsWeaponInSlot(slotID)
-    if not GetInventoryItemID or not GetItemInfoInstant then
+    if not GetInventoryItemID or not (C_Item and C_Item.GetItemInfoInstant) then
         return slotID == 16
     end
 
@@ -238,7 +283,7 @@ local function IsWeaponInSlot(slotID)
         return false
     end
 
-    local _, _, _, equipLoc = GetItemInfoInstant(itemID)
+    local _, _, _, equipLoc = C_Item.GetItemInfoInstant(itemID)
     return IsWeaponEquipLocation(equipLoc)
 end
 
@@ -276,19 +321,14 @@ local function GetItemVisual(itemID, fallbackName)
         icon = C_Item.GetItemIconByID(itemID)
     end
 
-    if not icon and GetItemInfoInstant then
-        local _, _, _, _, _, _, _, _, _, itemIcon = GetItemInfoInstant(itemID)
+    if not icon and C_Item and C_Item.GetItemInfoInstant then
+        local _, _, _, _, itemIcon = C_Item.GetItemInfoInstant(itemID)
         icon = itemIcon
     end
 
     local name = fallbackName
-    if C_Item and C_Item.GetItemNameByID then
-        local n = C_Item.GetItemNameByID(itemID)
-        if n and n ~= "" then
-            name = n
-        end
-    elseif GetItemInfo then
-        local n = GetItemInfo(itemID)
+    if C_Item and C_Item.GetItemInfo then
+        local n = C_Item.GetItemInfo(itemID)
         if n and n ~= "" then
             name = n
         end
@@ -645,14 +685,23 @@ function CB:UpdateDragHandle()
     self.DragHandle:EnableMouse(showHandle)
 end
 
+function CB:ApplyCombatVisibilityDriver()
+    if self.Anchor and not self._combatVisibilityDriverRegistered then
+        if RegisterStateDriver then
+            RegisterStateDriver(self.Anchor, "visibility", "[combat] hide; show")
+            self._combatVisibilityDriverRegistered = true
+        elseif RegisterAttributeDriver then
+            RegisterAttributeDriver(self.Anchor, "state-visibility", "[combat] hide; show")
+            self._combatVisibilityDriverRegistered = true
+        end
+    end
+end
+
 function CB:HideAll()
     local inCombat = InCombatLockdown and InCombatLockdown()
 
     if self.Anchor then
-        if inCombat then
-            self.Anchor:SetAlpha(0)
-            self._hiddenViaCombat = true
-        else
+        if not inCombat then
             self.Anchor:Hide()
         end
     end
@@ -666,7 +715,6 @@ function CB:HideAll()
 
     if self.DragHandle then
         if inCombat then
-            self.DragHandle:SetAlpha(0)
             self.DragHandle:EnableMouse(false)
         else
             self.DragHandle:Hide()
@@ -677,6 +725,7 @@ end
 
 function CB:EnsureAnchor()
     if self.Anchor then
+        self:ApplyCombatVisibilityDriver()
         self:ApplyAnchorPoint()
         return self.Anchor
     end
@@ -684,12 +733,13 @@ function CB:EnsureAnchor()
     local baseWidth, baseHeight = self:GetAnchorBaseSize()
     local anchor = FN:CreateAnchorFrame(UIParent, baseWidth, baseHeight)
     self.Anchor = anchor
+    self:ApplyCombatVisibilityDriver()
     self:ApplyAnchorPoint()
     self:UpdateDragHandle()
     return anchor
 end
 
-function CB:BuildVisibilityState()
+function CB:BuildVisibilityState(auraSnapshot)
     local state = {
         hasFlaskBuff = false,
         hasFoodBuff = false,
@@ -705,20 +755,20 @@ function CB:BuildVisibilityState()
     }
 
     for _, entry in ipairs(self.tracked_spells_items) do
-        if entry.flask and entry.spellID and HasPlayerAuraBySpellID(entry.spellID) then
+        if entry.flask and entry.spellID and HasPlayerAuraBySpellID(entry.spellID, auraSnapshot) then
             state.hasFlaskBuff = true
             break
         end
     end
 
-    state.hasFoodBuff = HasPlayerAuraByName("Well Fed") or HasPlayerAuraByName("Hearty Well Fed")
+    state.hasFoodBuff = HasPlayerAuraByName("Well Fed", auraSnapshot) or HasPlayerAuraByName("Hearty Well Fed", auraSnapshot)
 
     for _, entry in ipairs(self.tracked_spells_items) do
-        if entry.auraGroup and entry.spellID and HasPlayerAuraBySpellID(entry.spellID) then
+        if entry.auraGroup and entry.spellID and HasPlayerAuraBySpellID(entry.spellID, auraSnapshot) then
             state.activeAuraGroups[entry.auraGroup] = true
         end
 
-        if entry.poison and entry.spellID and HasPlayerAuraBySpellID(entry.spellID) then
+        if entry.poison and entry.spellID and HasPlayerAuraBySpellID(entry.spellID, auraSnapshot) then
             if entry.lethal == false then
                 state.hasNonLethalPoisonBuff = true
             else
@@ -757,12 +807,13 @@ end
 
 function CB:BuildVisibleEntries()
     local visible = {}
-    local state = self:BuildVisibilityState()
+    local auraSnapshot = BuildPlayerAuraSnapshot()
+    local state = self:BuildVisibilityState(auraSnapshot)
 
     for _, entry in ipairs(self.tracked_spells_items) do
         if entry.buff then
             local isKnown = entry.spellID and IsSpellKnownForPlayer(entry.spellID)
-            local isMissing = not HasPlayerAuraForEntry(entry)
+            local isMissing = not HasPlayerAuraForEntry(entry, auraSnapshot)
             local groupMissing = not entry.auraGroup or not state.activeAuraGroups[entry.auraGroup]
             if isKnown and isMissing and groupMissing then
                 visible[#visible + 1] = entry
@@ -969,16 +1020,6 @@ function CB:UpdateAll()
         return
     end
 
-    if self._hiddenViaCombat then
-        self._hiddenViaCombat = false
-        if self.Anchor then
-            self.Anchor:SetAlpha(1)
-        end
-        if self.DragHandle then
-            self.DragHandle:SetAlpha(1)
-        end
-    end
-
     self:EnsureDB()
 
     if not self:IsEnabled() then
@@ -1017,6 +1058,18 @@ function CB:UpdateAll()
     self.pendingRefresh = false
 end
 
+function CB:ScheduleUpdate()
+    if self.refreshScheduled then
+        return
+    end
+
+    self.refreshScheduled = true
+    C_Timer.After(REFRESH_DEBOUNCE_SECONDS, function()
+        CB.refreshScheduled = false
+        CB:UpdateAll()
+    end)
+end
+
 function CB:OnSettingsChanged()
     self:UpdateAll()
 end
@@ -1038,7 +1091,7 @@ function CB:Init()
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
     frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     frame:RegisterEvent("BAG_UPDATE_DELAYED")
-    frame:RegisterEvent("UNIT_AURA")
+    frame:RegisterUnitEvent("UNIT_AURA", "player")
     frame:RegisterEvent("SPELLS_CHANGED")
     frame:RegisterEvent("CHALLENGE_MODE_START")
     frame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
@@ -1047,13 +1100,6 @@ function CB:Init()
     frame:RegisterEvent("ENCOUNTER_END")
 
     frame:SetScript("OnEvent", function(_, event, ...)
-        if event == "UNIT_AURA" then
-            local unit = ...
-            if unit ~= "player" then
-                return
-            end
-        end
-
         if event == "PLAYER_REGEN_DISABLED" then
             self.pendingRefresh = true
             self:HideAll()
@@ -1071,6 +1117,11 @@ function CB:Init()
                 self.pendingRefresh = false
             end
             self:UpdateAll()
+            return
+        end
+
+        if event == "UNIT_AURA" or event == "BAG_UPDATE_DELAYED" or event == "SPELLS_CHANGED" then
+            self:ScheduleUpdate()
             return
         end
 

@@ -301,15 +301,18 @@ do
     end
 
     function M:LoadProfessionUIs()
-        if UIParentLoadAddOn then
-            pcall(UIParentLoadAddOn, "Blizzard_Professions")
-            pcall(UIParentLoadAddOn, "Blizzard_ProfessionsCustomerOrders")
+        if C_AddOns and C_AddOns.LoadAddOn then
+            if not (C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_Professions")) then
+                pcall(C_AddOns.LoadAddOn, "Blizzard_Professions")
+            end
+            if not (C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_ProfessionsCustomerOrders")) then
+                pcall(C_AddOns.LoadAddOn, "Blizzard_ProfessionsCustomerOrders")
+            end
         end
     end
 
     function M:Apply()
         self:EnsureDB()
-        self:LoadProfessionUIs()
         self:EnsureHooks()
         self:RefreshAll()
     end
@@ -327,8 +330,8 @@ do
         end
 
         frame = CreateFrame("Frame")
-        frame:RegisterEvent("PLAYER_ENTERING_WORLD")
         frame:RegisterEvent("ADDON_LOADED")
+        frame:RegisterEvent("TRADE_SKILL_SHOW")
         frame:SetScript("OnEvent", function(_, event, addonName)
             if event == "ADDON_LOADED" then
                 if addonName == "Blizzard_Professions" or addonName == "Blizzard_ProfessionsCustomerOrders" then
@@ -338,7 +341,10 @@ do
                 return
             end
 
-            self:Apply()
+            self:LoadProfessionUIs()
+            C_Timer.After(0, function()
+                self:Apply()
+            end)
         end)
 
         C_Timer.After(0, function()

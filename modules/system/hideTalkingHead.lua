@@ -4,6 +4,7 @@ NX.HideTalkingHead = NX.HideTalkingHead or {}
 
 local M = NX.HideTalkingHead
 local hooked
+local frame
 
 local function Apply()
     if not NX.DB or not NX.DB.system.hideTalkingHead then return end
@@ -42,6 +43,18 @@ function M:OnSettingsChanged()
 end
 
 function M:Init()
+    if not frame then
+        frame = CreateFrame("Frame")
+        frame:RegisterEvent("ADDON_LOADED")
+        frame:RegisterEvent("TALKINGHEAD_REQUESTED")
+        frame:SetScript("OnEvent", function(_, event, arg1)
+            if event == "ADDON_LOADED" and arg1 ~= "Blizzard_TalkingHeadUI" then
+                return
+            end
+            M:Apply()
+        end)
+    end
+
     self:Apply()
 end
 

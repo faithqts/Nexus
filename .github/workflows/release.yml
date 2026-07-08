@@ -21,6 +21,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Luacheck
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y lua5.1 luarocks
+          sudo luarocks install luacheck
+
+      - name: Run Luacheck
+        run: luacheck . --config .luacheckrc
+
       - name: Extract Metadata from TOC
         id: meta
         run: |
@@ -101,7 +111,9 @@ jobs:
             --exclude 'references/' \
             --exclude 'node_modules/' \
             --exclude '.gitignore' \
+            --exclude '.luacheckrc' \
             --exclude '.editorconfig' \
+            --exclude 'implementation.md' \
             --exclude 'README.md' \
             . "$PACKAGE_DIR/$PROJECT_NAME/"
 

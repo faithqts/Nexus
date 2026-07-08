@@ -12,15 +12,15 @@ P.Ticker = P.Ticker or nil
 P.pendingRefresh = P.pendingRefresh or false
 
 P.List = {
-    { spellID = 1254572, spellName = "Path of Devoted Magistry", text = "MGT", pinned = true },
-    { spellID = 1254559, spellName = "Path of Cavernous Depths", text = "MAIS", pinned = true },
-    { spellID = 1254563, spellName = "Path of the Fractured Core", text = "NPX", pinned = true },
-    { spellID = 1254400, spellName = "Path of the Windrunners", text = "WRS", pinned = true },
-    { spellID = 393273, spellName = "Path of the Draconic Diploma", text = "AA", pinned = true },
-    { spellID = 1254551, spellName = "Path of Dark Dereliction", text = "SOTT", pinned = true },
-    { spellID = 159898, spellName = "Path of the Skies", text = "SKY", pinned = true },
-    { spellID = 1254557, spellName = "Path of the Crowning Pinnacle", text = "SKY", pinned = true },
-    { spellID = 1254555, spellName = "Path of Unyielding Blight", text = "POS", pinned = true },
+    { spellID = 1254572, spellName = "Path of Devoted Magistry", text = "MGT" },
+    { spellID = 1254559, spellName = "Path of Cavernous Depths", text = "MAIS" },
+    { spellID = 1254563, spellName = "Path of the Fractured Core", text = "NPX" },
+    { spellID = 1254400, spellName = "Path of the Windrunners", text = "WRS" },
+    { spellID = 393273, spellName = "Path of the Draconic Diploma", text = "AA" },
+    { spellID = 1254551, spellName = "Path of Dark Dereliction", text = "SOTT" },
+    { spellID = 159898, spellName = "Path of the Skies", text = "SKY" },
+    { spellID = 1254557, spellName = "Path of the Crowning Pinnacle", text = "SKY" },
+    { spellID = 1254555, spellName = "Path of Unyielding Blight", text = "POS" },
 
     { spellID = 410080, spellName = "Path of Wind's Domain", text = "VP" },
     { spellID = 424197, spellName = "Path of Twisted Time", text = "DOTI" },
@@ -93,20 +93,51 @@ P.List = {
     { spellID = 1239155, spellName = "Path of the All-Devouring", text = "MFO" },
 }
 
+local SEASON_MAP_TELEPORT_SPELLS = {
+    [118] = 1254555, -- Pit of Saron entrance map
+    [542] = 159898, -- Skyreach entrance map
+    [882] = 1254551, -- Seat of the Triumvirate entrance map
+    [2025] = 393273, -- Algeth'ar Academy entrance map
+    [2395] = 1254400, -- Windrunner Spire entrance map
+    [2405] = 1254563, -- Nexus-Point Xenas entrance map
+    [2424] = 1254572, -- Magisters' Terrace entrance map
+    [2437] = 1254559, -- Maisara Caverns entrance map
+}
+
+local SEASON_NAME_TELEPORT_SPELLS = {
+    ["algethar academy"] = 393273,
+    ["algeth ar academy"] = 393273,
+    ["magisters terrace"] = 1254572,
+    ["magister s terrace"] = 1254572,
+    ["maisara caverns"] = 1254559,
+    ["nexus point xenas"] = 1254563,
+    ["pit of saron"] = 1254555,
+    ["seat of the triumvirate"] = 1254551,
+    ["skyreach"] = 159898,
+    ["windrunner spire"] = 1254400,
+}
+
+local function NormalizeDungeonName(name)
+    local text = string.lower(tostring(name or ""))
+    text = text:gsub("[`]", "'")
+    text = text:gsub("[%p]", " ")
+    text = text:gsub("%s+", " ")
+    text = text:match("^%s*(.-)%s*$") or ""
+    return text
+end
+
 local function EnsureChallengesLoaded()
-    local isLoaded
-    if C_AddOns and C_AddOns.IsAddOnLoaded then
-        isLoaded = C_AddOns.IsAddOnLoaded("Blizzard_ChallengesUI")
-    elseif IsAddOnLoaded then
-        isLoaded = IsAddOnLoaded("Blizzard_ChallengesUI")
+    if not C_AddOns then
+        return
     end
 
-    if isLoaded then return end
+    local isLoaded = C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_ChallengesUI")
+    if isLoaded then
+        return
+    end
 
-    if C_AddOns and C_AddOns.LoadAddOn then
+    if C_AddOns.LoadAddOn then
         C_AddOns.LoadAddOn("Blizzard_ChallengesUI")
-    elseif LoadAddOn then
-        LoadAddOn("Blizzard_ChallengesUI")
     end
 end
 
@@ -169,23 +200,17 @@ local function ClearCooldownCompat(cooldownFrame)
     if not cooldownFrame then return end
 
     if cooldownFrame.Clear then
-        pcall(function()
-            cooldownFrame:Clear()
-        end)
+        pcall(cooldownFrame.Clear, cooldownFrame)
         return
     end
 
-    pcall(function()
-        cooldownFrame:SetCooldown(0, 0, 1)
-    end)
+    pcall(cooldownFrame.SetCooldown, cooldownFrame, 0, 0, 1)
 end
 
 local function TrySetCooldownCompat(cooldownFrame, start, duration, modRate)
     if not cooldownFrame then return false end
 
-    local ok = pcall(function()
-        cooldownFrame:SetCooldown(start, duration, modRate or 1)
-    end)
+    local ok = pcall(cooldownFrame.SetCooldown, cooldownFrame, start, duration, modRate or 1)
 
     if ok then
         return true
@@ -246,6 +271,51 @@ local function BuildEquivalentSuppressionMap(entries)
     return suppress
 end
 
+local function GetCurrentSeasonKey()
+    if C_MythicPlus and C_MythicPlus.GetCurrentSeason then
+        local season = C_MythicPlus.GetCurrentSeason()
+        if season ~= nil then
+            return tostring(season)
+        end
+    end
+
+    return "unknown"
+end
+
+function P:ApplySeasonSet()
+    local seasonSet = self._seasonSet
+    for _, entry in ipairs(self.List) do
+        entry.pinned = seasonSet and seasonSet[entry.spellID] == true or false
+    end
+end
+
+function P:RefreshSeasonSet(force)
+    local seasonKey = GetCurrentSeasonKey()
+    if not force and self._seasonKey == seasonKey and self._seasonSet then
+        self:ApplySeasonSet()
+        return
+    end
+
+    local seasonSet = {}
+
+    if C_ChallengeMode and C_ChallengeMode.GetMapTable and C_ChallengeMode.GetMapUIInfo then
+        local mapTable = C_ChallengeMode.GetMapTable()
+        if type(mapTable) == "table" then
+            for _, challengeMapID in ipairs(mapTable) do
+                local name, _, _, _, _, mapID = C_ChallengeMode.GetMapUIInfo(challengeMapID)
+                local spellID = (mapID and SEASON_MAP_TELEPORT_SPELLS[mapID]) or SEASON_NAME_TELEPORT_SPELLS[NormalizeDungeonName(name)]
+                if spellID then
+                    seasonSet[spellID] = true
+                end
+            end
+        end
+    end
+
+    self._seasonKey = seasonKey
+    self._seasonSet = seasonSet
+    self:ApplySeasonSet()
+end
+
 local function IsSafeToRenderPortals()
     if FN and FN.PassesCommonNonCombatRules and not FN:PassesCommonNonCombatRules() then
         return false
@@ -283,6 +353,8 @@ function P:IsEnabled()
 end
 
 function P:HideAll()
+    self:StopTicker()
+
     if InCombatLockdown() then
         self.pendingRefresh = true
         return
@@ -317,6 +389,53 @@ function P:GetConfig()
     return cfg
 end
 
+function P:IsHostVisible()
+    if self.Anchor and self.Anchor.IsVisible and self.Anchor:IsVisible() then
+        return true
+    end
+
+    local parent = PVEFrame or ChallengesFrame
+    return parent and parent.IsVisible and parent:IsVisible() or false
+end
+
+function P:ApplyCombatVisibilityDriver()
+    if self.Anchor and not self._combatVisibilityDriverRegistered then
+        if RegisterStateDriver then
+            RegisterStateDriver(self.Anchor, "visibility", "[combat] hide; show")
+            self._combatVisibilityDriverRegistered = true
+        elseif RegisterAttributeDriver then
+            RegisterAttributeDriver(self.Anchor, "state-visibility", "[combat] hide; show")
+            self._combatVisibilityDriverRegistered = true
+        end
+    end
+end
+
+function P:InstallVisibilityHooks(parent)
+    self._visibilityHookedParents = self._visibilityHookedParents or {}
+
+    if self.Anchor and self.Anchor.HookScript and not self._anchorVisibilityHooked then
+        self._anchorVisibilityHooked = true
+        self.Anchor:HookScript("OnShow", function()
+            P:StartTicker()
+            P:UpdateCooldowns()
+        end)
+        self.Anchor:HookScript("OnHide", function()
+            P:StopTicker()
+        end)
+    end
+
+    if parent and parent.HookScript and not self._visibilityHookedParents[parent] then
+        self._visibilityHookedParents[parent] = true
+        parent:HookScript("OnShow", function()
+            P:StartTicker()
+            P:UpdateCooldowns()
+        end)
+        parent:HookScript("OnHide", function()
+            P:StopTicker()
+        end)
+    end
+end
+
 function P:CreateAnchor(cfg)
     local parent = PVEFrame or ChallengesFrame
     if not parent then return false end
@@ -326,6 +445,8 @@ function P:CreateAnchor(cfg)
     else
         self.Anchor:SetParent(parent)
     end
+    self:ApplyCombatVisibilityDriver()
+    self:InstallVisibilityHooks(parent)
 
     self.Anchor:ClearAllPoints()
     self.Anchor:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", cfg.anchorX, cfg.anchorY)
@@ -561,12 +682,7 @@ function P:UpdateCooldowns()
 
                 local hasSpellCooldown = false
                 if cooldownApplied then
-                    local ok = pcall(function()
-                        hasSpellCooldown = (start > 0) and (duration > 1.5)
-                    end)
-                    if not ok then
-                        hasSpellCooldown = false
-                    end
+                    hasSpellCooldown = (start > 0) and (duration > 1.5)
                 else
                     hasSpellCooldown = false
                 end
@@ -608,18 +724,23 @@ function P:UpdateAll()
 
     local cfg = self:GetConfig()
     EnsureChallengesLoaded()
+    self:RefreshSeasonSet()
     if not self:CreateAnchor(cfg) then return end
     self.Anchor:Show()
 
     self:BuildButtons()
     self:Layout()
     self:UpdateCooldowns()
+    self:StartTicker()
 end
 
 function P:StartTicker()
     if self.Ticker then
-        self.Ticker:Cancel()
-        self.Ticker = nil
+        return
+    end
+
+    if not self:IsEnabled() or not self:IsHostVisible() then
+        return
     end
 
     local interval = 1 / math.max(1, UPDATE_HZ)
@@ -643,30 +764,33 @@ end
 function P:Init()
     self:EnsureDB()
     self:UpdateAll()
-    if self:IsEnabled() then
-        self:StartTicker()
-    else
+    if not self:IsEnabled() then
         self:StopTicker()
     end
 end
 
 function P:OnSettingsChanged()
     self:EnsureDB()
-    if self:IsEnabled() then
-        self:StartTicker()
-    else
+    if not self:IsEnabled() then
         self:StopTicker()
     end
     self:UpdateAll()
 end
 
 function P:OnEvent(event, ...)
+    if event == "CHALLENGE_MODE_MAPS_UPDATE" then
+        self:RefreshSeasonSet(true)
+        self:UpdateAll()
+        return
+    end
+
     if event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" or event == "CHALLENGE_MODE_START" or event == "CHALLENGE_MODE_COMPLETED" or event == "CHALLENGE_MODE_RESET" or event == "ENCOUNTER_START" or event == "ENCOUNTER_END" then
         self:UpdateAll()
         return
     end
 
     if event == "ADDON_LOADED" and ... == "Blizzard_ChallengesUI" then
+        self:RefreshSeasonSet(true)
         self:UpdateAll()
         return
     end
@@ -685,6 +809,3 @@ function P:OnEvent(event, ...)
         return
     end
 end
-
-
-
