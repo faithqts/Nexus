@@ -66,7 +66,7 @@ CB.tracked_spells_items = {
     { spellID = 5761, spellName = "Numbing Poison", text = "Numbing\nPoison", poison = true, lethal = false },
     { spellID = 381637, spellName = "Atrophic Poison", text = "Atrophic\nPoison", poison = true, lethal = false },
     { spellID = 3408, spellName = "Crippling Poison", text = "Crippling\nPoison", poison = true, lethal = false },
-    
+
     { spellID = 433568, spellName = "Rite of Sanctification", text = "Sanctification", imbue = true, preferredHand = "MAIN" },
     { spellID = 433583, spellName = "Rite of Adjuration", text = "Adjuration", imbue = true, preferredHand = "MAIN" },
 
