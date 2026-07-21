@@ -24,7 +24,7 @@ do
 
         EnsureHideHelpTipsCVarRegistered()
 
-        local showTutorials = not (NX.DB.system.tutorials.disabled == true)
+        local showTutorials = NX.DB.system.tutorials.disabled ~= true
         FN:SetCVarBool("showTutorials", showTutorials)
 
         local hideMicroMenuPopups = NX.DB.system.tutorials.hideMicroMenuPopups == true

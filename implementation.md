@@ -5,7 +5,7 @@ priority. Each task lists the file(s), the concrete change, and a verification s
 Check items off as they land.
 
 - **Version audited:** 1.0.17 · **Interface:** 120005
-- **Target release:** 12.0.7.0 · **Interface:** 120007
+- **Target release:** 12.0.7.1 · **Interface:** 120007
 - **Execution status:** remediation code changes landed in this pass; WoW-client verification steps remain pending.
 - **Reference:** local read-only checkout of shipped Blizzard interface code (do not modify)
 - **Legend:** 🔴 taint / secure-path · 🟠 performance · 🟡 correctness bug · 🔵 standards / maintainability
